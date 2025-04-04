@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 import cadquery as cq
 import sys
 
@@ -46,18 +47,18 @@ def export_model(model, filename, file_format):
     """
     if file_format.lower() == "stl":
         cq.exporters.export(model, filename + ".stl")
-        print(f"Exported as {filename}.stl")
+        #print(f"Exported as {filename}.stl")
     elif file_format.lower() == "step":
         cq.exporters.export(model, filename + ".step")
-        print(f"Exported as {filename}.step")
+        #print(f"Exported as {filename}.step", file=sys.stderr)
     else:
-        print("Unsupported format. Use 'stl' or 'step'.")
+        print("Unsupported format. Use 'stl' or 'step'.", file=sys.sdterr)
 
 
 if __name__ == "__main__":
     if len(sys.argv) != 6:
-        print("Usage: python src/cube.py <filename> <format> <cube_number> <cube_size> <tube_size>")
-        print("Example: python src/cube.py my_cube stl 1 2.397 0.595")
+        print("Usage: rerf-cubes <filename> <format> <cube_number> <cube_size> <tube_size>")
+        print("Example: ./rerf-cube my_cube stl 1 2.397 0.595")
     else:
         filename = sys.argv[1]
         file_format = sys.argv[2]
