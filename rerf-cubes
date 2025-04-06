@@ -20,13 +20,16 @@ def generate_cube(cube_number: int, cube_size: float, tube_size: float):
 
     # Prepare formatted text with three significant digits
     cube_number_text = f"{cube_number}"
-    cube_size_text = f"{cube_size:.3g}"
-    tube_size_text = f"{tube_size:.3g}"
+    cube_size_text = f"{cube_size:5.3f}"
+    tube_size_text = f"{tube_size:5.3f}"
+
+    htext =0.7
+    dcut = 0.1
 
     # Chisel text into the respective faces
-    cube = cube.faces("+X").workplane().text(cube_size_text, 0.5, 0.1, cut=True)
-    cube = cube.faces("-X").workplane().text(tube_size_text, 0.5, 0.1, cut=True)
-    cube = cube.faces("+Y").workplane().text(cube_number_text, 0.5, 0.1, cut=True)
+    cube = cube.faces(">X").workplane(centerOption="CenterOfMass").text(cube_size_text, htext, -dcut, font="RobotoMono Nerd Font")
+    cube = cube.faces("<X").workplane(centerOption="CenterOfMass").text(tube_size_text, htext, -dcut, font="RobotoMono Nerd Font")
+    cube = cube.faces(">Y").workplane(centerOption="CenterOfMass").text(cube_number_text, htext, -dcut, font="RobotoMono Nerd Font")
 
     # Shift the cube so its bottom face is on the build plate (Z = 0)
     cube = cube.translate((0, 0, cube_size / 2))
