@@ -40,6 +40,9 @@ def generate_cube(cube_number: int, cube_size: float, tube_size: float):
     cube = cube.faces("<X").invoke(make_text(tube_size_text))
     cube = cube.faces(">Y").invoke(make_text(cube_number_text))
 
+    # Create a hole for the tube on the top face
+    cube = cube.faces(">Z").workplane(centerOption="CenterOfMass").hole(tube_size)
+
     # Shift the cube so its bottom face is on the build plate (Z = 0)
     cube = cube.translate((0, 0, cube_size / 2))
 
