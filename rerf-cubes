@@ -26,10 +26,19 @@ def generate_cube(cube_number: int, cube_size: float, tube_size: float):
     htext =0.7
     dcut = 0.1
 
+    def make_text(s):
+        def callback(wp):
+            wp = wp.workplane(centerOption="CenterOfMass").text(
+                s, htext, -dcut, font="RobotoMono Nerd Font"
+            )
+            return wp
+
+        return callback
+
     # Chisel text into the respective faces
-    cube = cube.faces(">X").workplane(centerOption="CenterOfMass").text(cube_size_text, htext, -dcut, font="RobotoMono Nerd Font")
-    cube = cube.faces("<X").workplane(centerOption="CenterOfMass").text(tube_size_text, htext, -dcut, font="RobotoMono Nerd Font")
-    cube = cube.faces(">Y").workplane(centerOption="CenterOfMass").text(cube_number_text, htext, -dcut, font="RobotoMono Nerd Font")
+    cube = cube.faces(">X").invoke(make_text(cube_size_text))
+    cube = cube.faces("<X").invoke(make_text(tube_size_text))
+    cube = cube.faces(">Y").invoke(make_text(cube_number_text))
 
     # Shift the cube so its bottom face is on the build plate (Z = 0)
     cube = cube.translate((0, 0, cube_size / 2))
