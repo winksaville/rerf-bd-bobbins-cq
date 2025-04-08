@@ -1,6 +1,11 @@
 #!/usr/bin/env python3
+import logging
 import cadquery as cq
 import sys
+
+logging.basicConfig(stream=sys.stdout, level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 
 def generate_cube(cube_number: int, cube_size: float, tube_size: float):
     """
@@ -71,9 +76,8 @@ def export_model(model, filename, file_format):
 
 
 if __name__ == "__main__":
-    # Output to stdout,$
-    #   "print: __name__: __cq_main__"
-    print(f"print: __name__: {__name__}")
+    logging.info(f"__main__ logging.info: __name__: {__name__}")
+    print(f"__main__ logging.info: __name__: {__name__}")
 
     if len(sys.argv) != 6:
         print("Usage: rerf-cubes <filename> <format> <cube_number> <cube_size> <tube_size>")
@@ -88,9 +92,7 @@ if __name__ == "__main__":
         cube = generate_cube(cube_number, cube_size, tube_size)
         export_model(cube, filename, file_format)
 elif __name__ == "__cq_main__":
-    # Output to Log viewer window on cq-editor
-    #   "[ 15:25:16] INFO: log: __name__: __cq_main__"
-    log(f"log: __name__: {__name__}")
+    logging.info(f"__cq_main__ logging.info: __name__: {__name__}")
 
     filename = "cubex"
     file_format = "stl"
@@ -103,4 +105,4 @@ elif __name__ == "__cq_main__":
 
     show_object(cube, name=filename)
 else:
-    print(f"Unreconized __name__: {__name__}")
+    logging.info(f"Unreconized __name__: {__name__}")
