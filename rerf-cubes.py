@@ -71,6 +71,10 @@ def export_model(model, filename, file_format):
 
 
 if __name__ == "__main__":
+    # Output to stdout,$
+    #   "print: __name__: __cq_main__"
+    print(f"print: __name__: {__name__}")
+
     if len(sys.argv) != 6:
         print("Usage: rerf-cubes <filename> <format> <cube_number> <cube_size> <tube_size>")
         print("Example: ./rerf-cube my_cube stl 1 2.397 0.595")
@@ -83,3 +87,20 @@ if __name__ == "__main__":
 
         cube = generate_cube(cube_number, cube_size, tube_size)
         export_model(cube, filename, file_format)
+elif __name__ == "__cq_main__":
+    # Output to Log viewer window on cq-editor
+    #   "[ 15:25:16] INFO: log: __name__: __cq_main__"
+    log(f"log: __name__: {__name__}")
+
+    filename = "cubex"
+    file_format = "stl"
+    cube_number = "x"
+    cube_size = 2.397
+    tube_size = 0.595
+
+    cube = generate_cube(cube_number, cube_size, tube_size)
+    export_model(cube, filename, file_format)
+
+    show_object(cube, name=filename)
+else:
+    print(f"Unreconized __name__: {__name__}")
