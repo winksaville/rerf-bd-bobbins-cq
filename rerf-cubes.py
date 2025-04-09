@@ -74,6 +74,47 @@ def export_model(model, filename, file_format):
     else:
         print("Unsupported format. Use 'stl' or 'step'.", file=sys.sdterr)
 
+def generate_build_object(cube_number: int, cube_size: float, tube_size: float):
+        logging.info(f"generate_build_object: cube_number: {cube_number}")
+
+        # build plate size in pixels
+        pixels_per_mm = 1 / 0.017
+        build_plate_width = 9024 / pixels_per_mm
+        build_plate_height = 5120 / pixels_per_mm
+        cube_size_half = cube_size / 2
+
+        # # Postion centered at (0,0,0)
+        # cube1 = generate_cube(cube_number, cube_size, tube_size)
+
+        # # Postion so adjacent to cube1
+        # cube2 = generate_cube(cube_number + 1, cube_size, tube_size)
+        # cube2 = cube2.translate((cube_size + (0.017 * 100), 0, 0))
+
+        # assy = cube1.add(cube2)
+
+        # return assy
+
+        # Postion so the cube is in the upper left corner of build plate
+        cube1 = generate_cube(cube_number, cube_size, tube_size)
+        cube1 = cube1.translate((cube_size_half, cube_size_half, 0))
+
+        # Postion so the cube is in the lower left corner of build plate
+        cube2 = generate_cube(cube_number + 1, cube_size, tube_size)
+        cube2 = cube2.translate((cube_size_half, build_plate_height - cube_size_half, 0))
+
+        # Postion so the cube is in the upper right corner of build plate
+        cube3 = generate_cube(cube_number + 2, cube_size, tube_size)
+        cube3 = cube3.translate((build_plate_width - cube_size_half, cube_size_half, 0))
+
+        # Postion so the cube is in the lower right corner of build plate
+        cube4 = generate_cube(cube_number + 3, cube_size, tube_size)
+        cube4 = cube4.translate((build_plate_width - cube_size_half, build_plate_height - cube_size_half, 0))
+
+        # Create the build object by uniting the four cubes
+        build_object = cube1.add(cube2).add(cube3).add(cube4)
+
+        return build_object
+
 
 if __name__ == "__main__":
     logging.info(f"__main__ logging.info: __name__: {__name__}")
@@ -89,20 +130,22 @@ if __name__ == "__main__":
         cube_size = float(sys.argv[4])
         tube_size = float(sys.argv[5])
 
-        cube = generate_cube(cube_number, cube_size, tube_size)
-        export_model(cube, filename, file_format)
+        build_object = generate_build_object(cube_number, cube_size, tube_size)
+
+        export_model(build_object, filename, file_format)
 elif __name__ == "__cq_main__":
     logging.info(f"__cq_main__ logging.info: __name__: {__name__}")
 
-    filename = "cubex"
+    filename = "boxes-at-corners"
     file_format = "stl"
-    cube_number = "x"
+    cube_number = 1
     cube_size = 2.397
     tube_size = 0.595
 
-    cube = generate_cube(cube_number, cube_size, tube_size)
-    export_model(cube, filename, file_format)
+    build_object = generate_build_object(cube_number, cube_size, tube_size)
 
-    show_object(cube, name=filename)
+    export_model(build_object, filename, file_format)
+
+    show_object(build_object, name=filename)
 else:
     logging.info(f"Unreconized __name__: {__name__}")
