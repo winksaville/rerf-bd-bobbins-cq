@@ -84,17 +84,6 @@ def generate_build_object(cube_number: int, cube_size: float, tube_size: float):
         build_plate_height = 5120 / pixels_per_mm
         cube_size_half = cube_size / 2
 
-        # # Postion centered at (0,0,0)
-        # cube1 = generate_cube(cube_number, cube_size, tube_size)
-
-        # # Postion so adjacent to cube1
-        # cube2 = generate_cube(cube_number + 1, cube_size, tube_size)
-        # cube2 = cube2.translate((cube_size + (0.017 * 100), 0, 0))
-
-        # assy = cube1.add(cube2)
-
-        # return assy
-
         # Postion so the cube is in the upper left corner of build plate
         cube1 = generate_cube(cube_number, cube_size, tube_size)
         cube1 = cube1.translate((cube_size_half, cube_size_half, 0))

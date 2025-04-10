@@ -1,6 +1,16 @@
 # 3D Cube with Text - CadQuery App
 
-This repository provides a simple Python application (`rerf-cubes`) that generates a 3D cube with text inscriptions on its faces using CadQuery. The application can be run on Windows, Mac, and Linux with minimal setup.
+This repository provides a simple Python application (`rerf-cubes-cq`) that generates 4 3D cubes in
+the 4 corners of the build plate. The are marked with the number 1 at the origin, 2 at +Y
+3 at +X and 4 at +X, +Y. Printing that didn't work out well, I manually fiddled with the
+base with 1 layer and 3 second exposure. That didn't produce any completed prints.
+
+I've now added base and standoffs using Lychee and we'll see if that's any better and it's file
+boxes-at-corners-lychee-supports.pm4n.
+
+My next step is to add the supports in this app as eventually I'll have quite a few cubes and
+adding supports manually won't be practical.
+
 
 ## Requirements
 
