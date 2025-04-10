@@ -66,7 +66,8 @@ def export_model(model, filename, file_format):
         None
     """
     if file_format.lower() == "stl":
-        cq.exporters.export(model, filename + ".stl")
+        # TODO: Allow ascii=True/False to be passed as a parameter
+        cq.Assembly(model).export(filename + ".stl", exportType="STL", ascii=True)
         #print(f"Exported as {filename}.stl")
     elif file_format.lower() == "step":
         cq.exporters.export(model, filename + ".step")
