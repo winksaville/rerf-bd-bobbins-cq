@@ -6,6 +6,12 @@ import sys
 logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# Resulution for of my printer
+# TODO: Make a context class and add this to it
+# and pass the context to the functions.
+# TODO: Add x, y, z resolution to the context class
+resolution = 0.017
+
 def round_to_resolution(value: float, resolution: float) -> float:
     """
     Rounds a value to the nearest multiple of the specified resolution.
@@ -41,8 +47,9 @@ def generate_cube(cube_number: int, cube_size: float, tube_size: float):
     cube_size_text = f"{cube_size:5.3f}"
     tube_size_text = f"{tube_size:5.3f}"
 
-    htext =0.697
-    dcut = 0.102
+    htext = round_to_resolution(0.7, resolution)
+    dcut = round_to_resolution(0.1, resolution)
+    logging.info(f"generate_cube: htext: {htext}, dcut: {dcut}")
 
     def make_text(s):
         def callback(wp):
@@ -199,7 +206,6 @@ def generate_build_object(cube_number: int, cube_size: float, tube_size: float):
         logging.info(f"generate_build_object: cube_number: {cube_number}")
 
         # build plate size in pixels
-        resolution = 0.017
         layer_height = 0.030
         base_layers = 6
         support_len = 5.0
