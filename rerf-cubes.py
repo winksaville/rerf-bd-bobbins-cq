@@ -6,6 +6,19 @@ import sys
 logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+def round_to_resolution(value: float, resolution: float) -> float:
+    """
+    Rounds a value to the nearest multiple of the specified resolution.
+
+    Parameters:
+        value (float): The value to round.
+        resolution (float): The resolution to round to.
+
+    Returns:
+        float: The rounded value.
+    """
+    return round(value / resolution) * resolution
+
 
 def generate_cube(cube_number: int, cube_size: float, tube_size: float):
     """
@@ -28,8 +41,8 @@ def generate_cube(cube_number: int, cube_size: float, tube_size: float):
     cube_size_text = f"{cube_size:5.3f}"
     tube_size_text = f"{tube_size:5.3f}"
 
-    htext =0.7
-    dcut = 0.1
+    htext =0.697
+    dcut = 0.102
 
     def make_text(s):
         def callback(wp):
@@ -145,13 +158,14 @@ def generate_support(
     # Create three support pillars on top of the base
     support_pillar_len = support_len - base_height
     support_radius = support_base_diameter / 2
-    support_loc_offset = base_size / 2 - support_radius
+    support_loc_offset = (base_size / 2) - support_radius
+
     support1 = support_pillar( support_pillar_len, support_base_diameter, support_tip_diameter).clean()
     support1 = support1.translate((-support_loc_offset, -support_loc_offset, base_height))
     support2 = support_pillar( support_pillar_len, support_base_diameter, support_tip_diameter).clean()
     support2 = support2.translate((support_loc_offset, -support_loc_offset, base_height))
     support3 = support_pillar( support_pillar_len, support_base_diameter, support_tip_diameter).clean()
-    support3 = support3.translate((0, +support_loc_offset, base_height))
+    support3 = support3.translate((0, support_loc_offset, base_height))
     
     # Union the base and support
     build_object = base.add(support1).add(support2).add(support3).clean()
@@ -185,11 +199,12 @@ def generate_build_object(cube_number: int, cube_size: float, tube_size: float):
         logging.info(f"generate_build_object: cube_number: {cube_number}")
 
         # build plate size in pixels
+        resolution = 0.017
         layer_height = 0.030
-        base_layers = 5
+        base_layers = 6
         support_len = 5.0
-        support_diameter = 0.75
-        support_tip_diameter = 0.2
+        support_diameter = round_to_resolution(0.75, resolution)
+        support_tip_diameter = round_to_resolution(0.3, resolution)
 
         support = generate_support(layer_height, cube_size, base_layers, support_len, support_diameter, support_tip_diameter)
         cube = generate_cube(cube_number, cube_size, tube_size)
