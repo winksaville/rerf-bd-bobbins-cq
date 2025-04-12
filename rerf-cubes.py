@@ -225,21 +225,36 @@ def generate_build_object(cube_count: int, cube_size: float, tube_size: float):
             cube_number = 1
 
             # Postion so the cube is in the upper left corner of build plate
+            support1 = generate_support(layer_height, cube_size, base_layers, support_len, support_diameter, support_tip_diameter)
             cube1 = generate_cube(cube_number, cube_size, tube_size)
+            cube1 = cube1.translate((0, 0, support_len))
+            cube1 = cube1.add(support1)
             cube1 = cube1.translate((cube_size_half, cube_size_half, 0))
-            cube1_support = generate_support(0.050, cube_size, base_layers, support_len, support_diameter, support_tip_diameter)
+            cube_number += 1
 
             # Postion so the cube is in the lower left corner of build plate
-            cube2 = generate_cube(cube_number + 1, cube_size, tube_size)
+            support2 = generate_support(layer_height, cube_size, base_layers, support_len, support_diameter, support_tip_diameter)
+            cube2 = generate_cube(cube_number, cube_size, tube_size)
+            cube2 = cube2.translate((0, 0, support_len))
+            cube2 = cube2.add(support2)
             cube2 = cube2.translate((cube_size_half, build_plate_height - cube_size_half, 0))
+            cube_number += 1
 
             # Postion so the cube is in the upper right corner of build plate
-            cube3 = generate_cube(cube_number + 2, cube_size, tube_size)
+            support3 = generate_support(layer_height, cube_size, base_layers, support_len, support_diameter, support_tip_diameter)
+            cube3 = generate_cube(cube_number, cube_size, tube_size)
+            cube3 = cube3.translate((0, 0, support_len))
+            cube3 = cube3.add(support3)
             cube3 = cube3.translate((build_plate_width - cube_size_half, cube_size_half, 0))
+            cube_number += 1
 
             # Postion so the cube is in the lower right corner of build plate
-            cube4 = generate_cube(cube_number + 3, cube_size, tube_size)
+            support4 = generate_support(layer_height, cube_size, base_layers, support_len, support_diameter, support_tip_diameter)
+            cube4 = generate_cube(cube_number, cube_size, tube_size)
+            cube4 = cube4.translate((0, 0, support_len))
+            cube4 = cube4.add(support4)
             cube4 = cube4.translate((build_plate_width - cube_size_half, build_plate_height - cube_size_half, 0))
+            cube_number += 1
 
             # Create the build object by uniting the four cubes
             build_object = cube1.add(cube2).add(cube3).add(cube4)
