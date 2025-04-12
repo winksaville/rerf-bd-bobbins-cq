@@ -49,7 +49,6 @@ def generate_cube(cube_number: int, cube_size: float, tube_size: float):
 
     htext = round_to_resolution(0.7, resolution)
     dcut = round_to_resolution(0.1, resolution)
-    logging.info(f"generate_cube: htext: {htext}, dcut: {dcut}")
 
     def make_text(s):
         def callback(wp):
@@ -202,9 +201,7 @@ def export_model(model: cq.Workplane, file_name: str, file_format: str):
     else:
         print("Unsupported format. Use 'stl' or 'step'.", file=sys.sdterr)
 
-def generate_build_object(cube_number: int, cube_size: float, tube_size: float):
-        logging.info(f"generate_build_object: cube_number: {cube_number}")
-
+def generate_build_object(cube_count: int, cube_size: float, tube_size: float):
         # build plate size in pixels
         layer_height = 0.030
         base_layers = 6
@@ -212,52 +209,59 @@ def generate_build_object(cube_number: int, cube_size: float, tube_size: float):
         support_diameter = round_to_resolution(0.75, resolution)
         support_tip_diameter = round_to_resolution(0.3, resolution)
 
-        support = generate_support(layer_height, cube_size, base_layers, support_len, support_diameter, support_tip_diameter)
-        cube = generate_cube(cube_number, cube_size, tube_size)
-        cube = cube.translate((0, 0, support_len))
-        build_object = cube.add(support)
+        if cube_count == 1:
+            # Create a single cube with support
+            support = generate_support(layer_height, cube_size, base_layers, support_len, support_diameter, support_tip_diameter)
+            cube = generate_cube(1, cube_size, tube_size)
+            cube = cube.translate((0, 0, support_len))
+            build_object = cube.add(support)
+        elif cube_count == 4:
+            # Create 4 cubes with support
+            pixels_per_mm = 1 / 0.017
+            build_plate_width = 9024 / pixels_per_mm
+            build_plate_height = 5120 / pixels_per_mm
+            cube_size_half = cube_size / 2
 
-        ## Additional variables for mulitple cubes
-        #pixels_per_mm = 1 / 0.017
-        #build_plate_width = 9024 / pixels_per_mm
-        #build_plate_height = 5120 / pixels_per_mm
-        #cube_size_half = cube_size / 2
+            cube_number = 1
 
-        ## Postion so the cube is in the upper left corner of build plate
-        #cube1 = generate_cube(cube_number, cube_size, tube_size)
-        #cube1 = cube1.translate((cube_size_half, cube_size_half, 0))
-        #cube1_support = generate_support(0.050, cube_size, base_layers, support_len, support_diameter, support_tip_diameter)
+            # Postion so the cube is in the upper left corner of build plate
+            cube1 = generate_cube(cube_number, cube_size, tube_size)
+            cube1 = cube1.translate((cube_size_half, cube_size_half, 0))
+            cube1_support = generate_support(0.050, cube_size, base_layers, support_len, support_diameter, support_tip_diameter)
 
-        ## Postion so the cube is in the lower left corner of build plate
-        #cube2 = generate_cube(cube_number + 1, cube_size, tube_size)
-        #cube2 = cube2.translate((cube_size_half, build_plate_height - cube_size_half, 0))
+            # Postion so the cube is in the lower left corner of build plate
+            cube2 = generate_cube(cube_number + 1, cube_size, tube_size)
+            cube2 = cube2.translate((cube_size_half, build_plate_height - cube_size_half, 0))
 
-        ## Postion so the cube is in the upper right corner of build plate
-        #cube3 = generate_cube(cube_number + 2, cube_size, tube_size)
-        #cube3 = cube3.translate((build_plate_width - cube_size_half, cube_size_half, 0))
+            # Postion so the cube is in the upper right corner of build plate
+            cube3 = generate_cube(cube_number + 2, cube_size, tube_size)
+            cube3 = cube3.translate((build_plate_width - cube_size_half, cube_size_half, 0))
 
-        ## Postion so the cube is in the lower right corner of build plate
-        #cube4 = generate_cube(cube_number + 3, cube_size, tube_size)
-        #cube4 = cube4.translate((build_plate_width - cube_size_half, build_plate_height - cube_size_half, 0))
+            # Postion so the cube is in the lower right corner of build plate
+            cube4 = generate_cube(cube_number + 3, cube_size, tube_size)
+            cube4 = cube4.translate((build_plate_width - cube_size_half, build_plate_height - cube_size_half, 0))
 
-        ## Create the build object by uniting the four cubes
-        #build_object = cube1.add(cube2).add(cube3).add(cube4)
+            # Create the build object by uniting the four cubes
+            build_object = cube1.add(cube2).add(cube3).add(cube4)
+        else:
+            print("Unsupported cube count, expected 1 or 4.", file=sys.stderr)
+            return None
 
         return build_object
 
-def doit(file_name: str, file_format: str, cube_number: int, cube_size: float, tube_size: float):
+def doit(file_name: str, file_format: str, cube_count: int, cube_size: float, tube_size: float):
     """
     Generates a 3D model of cubes with text inscriptions and exports it to a file.
     Parameters:
         file_name (str): The name of the output file (without extension).
         file_format (str): The format to export the model ('stl' or 'step').
-        cube_number (int): The cube number to engrave on the +Y face.
+        cube_count (int): The number of cubes to create, cube number is engraved on the +Y face.
         cube_size (float): The size of the cube to engrave on the +X face.
         tube_size (float): The tube size to engrave on the -X face.
     Returns:
         CadQuery object representing the final model.
     """
-    build_object = generate_build_object(cube_number, cube_size, tube_size)
+    build_object = generate_build_object(cube_count, cube_size, tube_size)
     export_model(build_object, file_name, file_format)
     return build_object
 
@@ -267,33 +271,39 @@ if __name__ == "__main__":
     print(f"__main__ logging.info: __name__: {__name__}")
 
     if len(sys.argv) != 6:
-        print("Usage: rerf-cubes <filename> <format> <cube_number> <cube_size> <tube_size>")
+        print("Usage: rerf-cubes <filename> <format> <cube_count> <cube_size> <tube_size>")
+        print("       <filename>:   Name of the output file (without extension)")
+        print("       <format>:     Format to export the model ('stl' or 'step')")
+        print("       <cube_count>: Number of cubes to create (1 or 4)")
+        print("                     cube number is engraved on the +Y face")
+        print("       <cube_size>:  Size of the cube engraved on the +X face")
+        print("       <tube_size>:  Tube size and engraved on the -X face")
         print("Example: ./rerf-cube my_cube stl 1 2.397 0.595")
     else:
         file_name = sys.argv[1]
         file_format = sys.argv[2]
-        cube_number = int(sys.argv[3])
+        cube_count = int(sys.argv[3])
         cube_size = float(sys.argv[4])
         tube_size = float(sys.argv[5])
         layer_height = 0.050
         support_len = 5.0
         base_layers = 5
 
-        build_object = doit(file_name, file_format, cube_number, cube_size, tube_size)
+        build_object = doit(file_name, file_format, cube_count, cube_size, tube_size)
 elif __name__ == "__cq_main__":
     logging.info(f"__cq_main__ logging.info: __name__: {__name__}")
 
     #file_name = "boxes-at-corners"
     file_name = "supported_cube"
     file_format = "stl"
-    cube_number = 1
+    cube_count = 1
     layer_height = 0.030
     base_layers = 5
     cube_size = 2.397
     tube_size = 0.595
     support_len = 5.0
 
-    build_object = doit(file_name, file_format, cube_number, cube_size, tube_size)
+    build_object = doit(file_name, file_format, cube_count, cube_size, tube_size)
 
     show_object(build_object, name=file_name)
 else:
