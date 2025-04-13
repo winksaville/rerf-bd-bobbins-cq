@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import argparse
 import logging
 import cadquery as cq
 import sys
@@ -282,31 +283,40 @@ def doit(file_name: str, file_format: str, cube_count: int, cube_size: float, tu
 
 
 if __name__ == "__main__":
-    logging.info(f"__main__ logging.info: __name__: {__name__}")
-    print(f"__main__ logging.info: __name__: {__name__}")
+    logging.debug(f"__main__ logging.info: __name__: {__name__}")
 
-    if len(sys.argv) != 6:
-        print("Usage: rerf-cubes <filename> <format> <cube_count> <cube_size> <tube_size>")
-        print("       <filename>:   Name of the output file (without extension)")
-        print("       <format>:     Format to export the model ('stl' or 'step')")
-        print("       <cube_count>: Number of cubes to create (1 or 4)")
-        print("                     cube number is engraved on the +Y face")
-        print("       <cube_size>:  Size of the cube engraved on the +X face")
-        print("       <tube_size>:  Tube size and engraved on the -X face")
-        print("Example: ./rerf-cube my_cube stl 1 2.397 0.595")
-    else:
-        file_name = sys.argv[1]
-        file_format = sys.argv[2]
-        cube_count = int(sys.argv[3])
-        cube_size = float(sys.argv[4])
-        tube_size = float(sys.argv[5])
-        layer_height = 0.050
-        support_len = 5.0
-        base_layers = 5
+    parser = argparse.ArgumentParser(description="Generate 3D cubes with text inscriptions.")
+    parser.add_argument("filename", type=str, help="Name of the output file (without extension)")
+    parser.add_argument("format", type=str, choices=["stl", "step"], help="Format to export the model ('stl' or 'step')")
+    parser.add_argument("cube_count", type=int, choices=[1, 4], help="Number of cubes to create (1 or 4)")
+    parser.add_argument("--cube_size", type=float, default=2.397, help="Size of the cube engraved on the +X face")
+    parser.add_argument("--tube_size", type=float, default=0.595, help="Tube size and engraved on the -X face")
 
-        build_object = doit(file_name, file_format, cube_count, cube_size, tube_size)
+    # Print help if no arguments are provided
+    #
+    # What I really want is to print the help if not enough positional arguments
+    # are passed but parser.parase_args() can't do that. The Bot suggested
+    # subclassing ArgumentParser. If follow this link:
+    #    https://chatgpt.com/share/67fc1e3c-647c-800c-a1be-00d68d516b10
+    # and then search for "subclassing ArgumentParser" you see the suggestion.
+    if len(sys.argv) == 1:
+        parser.print_help()
+        sys.exit(0)
+
+    args = parser.parse_args()
+
+    file_name = args.filename
+    file_format = args.format
+    cube_count = args.cube_count
+    cube_size = args.cube_size
+    tube_size = args.tube_size
+    layer_height = 0.050
+    support_len = 5.0
+    base_layers = 5
+
+    build_object = doit(file_name, file_format, cube_count, cube_size, tube_size)
 elif __name__ == "__cq_main__":
-    logging.info(f"__cq_main__ logging.info: __name__: {__name__}")
+    logging.debug(f"__cq_main__ logging.info: __name__: {__name__}")
 
     #file_name = "boxes-at-corners"
     file_name = "supported_cube"
