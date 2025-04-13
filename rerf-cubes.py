@@ -267,20 +267,17 @@ def generate_build_object(cube_count: int, cube_size: float, tube_size: float):
 
         return build_object
 
-def doit(file_name: str, file_format: str, cube_count: int, cube_size: float, tube_size: float):
+def doit(ctx: Context):
     """
     Generates a 3D model of cubes with text inscriptions and exports it to a file.
+
     Parameters:
-        file_name (str): The name of the output file (without extension).
-        file_format (str): The format to export the model ('stl' or 'step').
-        cube_count (int): The number of cubes to create, cube number is engraved on the +Y face.
-        cube_size (float): The size of the cube to engrave on the +X face.
-        tube_size (float): The tube size to engrave on the -X face.
+        ctx (Context): The context object containing parameters for the model.
     Returns:
         CadQuery object representing the final model.
     """
-    build_object = generate_build_object(cube_count, cube_size, tube_size)
-    export_model(build_object, file_name, file_format)
+    build_object = generate_build_object(ctx.cube_count, ctx.cube_size, ctx.tube_size)
+    export_model(build_object, ctx.file_name, ctx.file_format)
     return build_object
 
 
@@ -328,7 +325,7 @@ if __name__ == "__main__":
     )
     logging.debug(f"ctx: {ctx}")
 
-    build_object = doit(ctx.file_name, ctx.file_format, ctx.cube_count, ctx.cube_size, ctx.tube_size)
+    build_object = doit(ctx)
 elif __name__ == "__cq_main__":
     logging.debug(f"__cq_main__ logging.info: __name__: {__name__}")
 
@@ -347,7 +344,7 @@ elif __name__ == "__cq_main__":
     )
     logging.debug(f"ctx: {ctx}")
 
-    build_object = doit(ctx.file_name, ctx.file_format, ctx.cube_count, ctx.cube_size, ctx.tube_size)
+    build_object = doit(ctx)
 
     show_object(build_object, name=ctx.file_name)
 else:
