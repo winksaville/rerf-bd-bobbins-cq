@@ -13,7 +13,6 @@ logger = logging.getLogger(__name__)
 # TODO: Make a context class and add this to it
 # and pass the context to the functions.
 # TODO: Add x, y, z resolution to the context class
-resolution = 0.017
 
 def round_to_resolution(value: float, resolution: float) -> float:
     """
@@ -29,7 +28,7 @@ def round_to_resolution(value: float, resolution: float) -> float:
     return round(value / resolution) * resolution
 
 
-def generate_cube(cube_number: int, cube_size: float, tube_size: float):
+def generate_cube(ctx: Context, cube_number: int, cube_size: float, tube_size: float):
     """
     Generates a 3D cube with text inscriptions on specified faces.
 
@@ -75,7 +74,7 @@ def generate_cube(cube_number: int, cube_size: float, tube_size: float):
 
     return cube
 
-def support_pillar(support_len: float, support_diameter: float, support_tip_diameter: float):
+def support_pillar(ctx: Context, support_len: float, support_diameter: float, support_tip_diameter: float):
     """
     Creates a support pillar with a base and a tip.
 
@@ -104,7 +103,7 @@ def support_pillar(support_len: float, support_diameter: float, support_tip_diam
 
     return base.union(tip)
 
-def gnerate_square_support_base(base_size: float, base_layers: float, layer_height: float):
+def gnerate_square_support_base(ctx: Context, base_size: float, base_layers: float, layer_height: float):
     """
     Generates a square support base with tappered edges
     so it's easier to pry off the build plate.
@@ -138,6 +137,7 @@ def gnerate_square_support_base(base_size: float, base_layers: float, layer_heig
 
 
 def generate_support(
+        ctx: Context,
         layer_height: float,
         base_size: float,
         base_layers: float,
@@ -161,7 +161,7 @@ def generate_support(
 
     # Create a cube for the base laying on the xy plane (build plate)
     base_height = base_layers * layer_height
-    base = gnerate_square_support_base(base_size, base_layers, layer_height)
+    base = gnerate_square_support_base(ctx, base_size, base_layers, layer_height)
     #base = cq.Workplane("XY").box(base_size, base_size, base_height, centered=(True, True, False))
 
     # Create three support pillars on top of the base
@@ -169,11 +169,11 @@ def generate_support(
     support_radius = support_base_diameter / 2
     support_loc_offset = (base_size / 2) - support_radius
 
-    support1 = support_pillar( support_pillar_len, support_base_diameter, support_tip_diameter).clean()
+    support1 = support_pillar(ctx, support_pillar_len, support_base_diameter, support_tip_diameter).clean()
     support1 = support1.translate((-support_loc_offset, -support_loc_offset, base_height))
-    support2 = support_pillar( support_pillar_len, support_base_diameter, support_tip_diameter).clean()
+    support2 = support_pillar(ctx, support_pillar_len, support_base_diameter, support_tip_diameter).clean()
     support2 = support2.translate((support_loc_offset, -support_loc_offset, base_height))
-    support3 = support_pillar( support_pillar_len, support_base_diameter, support_tip_diameter).clean()
+    support3 = support_pillar(ctx, support_pillar_len, support_base_diameter, support_tip_diameter).clean()
     support3 = support3.translate((0, support_loc_offset, base_height))
     
     # Union the base and support
@@ -204,56 +204,56 @@ def export_model(model: cq.Workplane, file_name: str, file_format: str):
     else:
         print("Unsupported format. Use 'stl' or 'step'.", file=sys.sdterr)
 
-def generate_build_object(cube_count: int, cube_size: float, tube_size: float):
+def generate_build_object(ctx: Context):
         # build plate size in pixels
         layer_height = 0.030
         base_layers = 6
         support_len = 5.0
-        support_diameter = round_to_resolution(0.75, resolution)
-        support_tip_diameter = round_to_resolution(0.3, resolution)
+        support_diameter = round_to_resolution(0.75, ctx.resolution)
+        support_tip_diameter = round_to_resolution(0.3, ctx.resolution)
 
-        if cube_count == 1:
+        if ctx.cube_count == 1:
             # Create a single cube with support
-            support = generate_support(layer_height, cube_size, base_layers, support_len, support_diameter, support_tip_diameter)
-            cube = generate_cube(1, cube_size, tube_size)
+            support = generate_support(ctx, layer_height, ctx.cube_size, base_layers, support_len, support_diameter, support_tip_diameter)
+            cube = generate_cube(ctx, 1, ctx.cube_size, ctx.tube_size)
             cube = cube.translate((0, 0, support_len))
             build_object = cube.add(support)
-        elif cube_count == 4:
+        elif ctx.cube_count == 4:
             # Create 4 cubes with support
-            pixels_per_mm = 1 / 0.017
+            pixels_per_mm = 1 / ctx.resolution
             build_plate_width = 9024 / pixels_per_mm
             build_plate_height = 5120 / pixels_per_mm
-            cube_size_half = cube_size / 2
+            cube_size_half = ctx.cube_size / 2
 
             cube_number = 1
 
             # Postion so the cube is in the upper left corner of build plate
-            support1 = generate_support(layer_height, cube_size, base_layers, support_len, support_diameter, support_tip_diameter)
-            cube1 = generate_cube(cube_number, cube_size, tube_size)
+            support1 = generate_support(ctx, layer_height, ctx.cube_size, base_layers, support_len, support_diameter, support_tip_diameter)
+            cube1 = generate_cube(ctx, cube_number, ctx.cube_size, ctx.tube_size)
             cube1 = cube1.translate((0, 0, support_len))
             cube1 = cube1.add(support1)
             cube1 = cube1.translate((cube_size_half, cube_size_half, 0))
             cube_number += 1
 
             # Postion so the cube is in the lower left corner of build plate
-            support2 = generate_support(layer_height, cube_size, base_layers, support_len, support_diameter, support_tip_diameter)
-            cube2 = generate_cube(cube_number, cube_size, tube_size)
+            support2 = generate_support(layer_height, ctx.cube_size, base_layers, support_len, support_diameter, support_tip_diameter)
+            cube2 = generate_cube(ctx, cube_number, ctx.cube_size, ctx.tube_size)
             cube2 = cube2.translate((0, 0, support_len))
             cube2 = cube2.add(support2)
             cube2 = cube2.translate((cube_size_half, build_plate_height - cube_size_half, 0))
             cube_number += 1
 
             # Postion so the cube is in the upper right corner of build plate
-            support3 = generate_support(layer_height, cube_size, base_layers, support_len, support_diameter, support_tip_diameter)
-            cube3 = generate_cube(cube_number, cube_size, tube_size)
+            support3 = generate_support(ctx, layer_height, ctx.cube_size, base_layers, support_len, support_diameter, support_tip_diameter)
+            cube3 = generate_cube(ctx, cube_number, ctx.cube_size, ctx.tube_size)
             cube3 = cube3.translate((0, 0, support_len))
             cube3 = cube3.add(support3)
             cube3 = cube3.translate((build_plate_width - cube_size_half, cube_size_half, 0))
             cube_number += 1
 
             # Postion so the cube is in the lower right corner of build plate
-            support4 = generate_support(layer_height, cube_size, base_layers, support_len, support_diameter, support_tip_diameter)
-            cube4 = generate_cube(cube_number, cube_size, tube_size)
+            support4 = generate_support(ctx, layer_height, ctx.cube_size, base_layers, support_len, support_diameter, support_tip_diameter)
+            cube4 = generate_cube(ctx, cube_number, ctx.cube_size, ctx.tube_size)
             cube4 = cube4.translate((0, 0, support_len))
             cube4 = cube4.add(support4)
             cube4 = cube4.translate((build_plate_width - cube_size_half, build_plate_height - cube_size_half, 0))
@@ -276,13 +276,16 @@ def doit(ctx: Context):
     Returns:
         CadQuery object representing the final model.
     """
-    build_object = generate_build_object(ctx.cube_count, ctx.cube_size, ctx.tube_size)
+    build_object = generate_build_object(ctx)
     export_model(build_object, ctx.file_name, ctx.file_format)
     return build_object
 
 
+
 if __name__ == "__main__":
     logging.debug(f"__main__ logging.info: __name__: {__name__}")
+
+    resolution = 0.017
 
     parser = argparse.ArgumentParser(description="Generate 3D cubes with text inscriptions.")
     parser.add_argument("filename", type=str, help="Name of the output file (without extension)")
@@ -328,6 +331,8 @@ if __name__ == "__main__":
     build_object = doit(ctx)
 elif __name__ == "__cq_main__":
     logging.debug(f"__cq_main__ logging.info: __name__: {__name__}")
+
+    resolution = 0.017
 
     ctx = Context(
         file_name="rerf-cubes",
