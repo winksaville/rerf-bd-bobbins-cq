@@ -320,6 +320,6 @@ elif __name__ == "__cq_main__":
 
     build_object = doit(file_name, file_format, cube_count, cube_size, tube_size)
 
-    show_object(build_object, name=file_name)
+    cq.show_object(build_object, name=file_name)
 else:
     logging.info(f"Unreconized __name__: {__name__}")
