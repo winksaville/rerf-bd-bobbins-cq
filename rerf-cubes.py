@@ -4,6 +4,8 @@ import logging
 import cadquery as cq
 import sys
 
+from context import Context
+
 logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -289,8 +291,14 @@ if __name__ == "__main__":
     parser.add_argument("filename", type=str, help="Name of the output file (without extension)")
     parser.add_argument("format", type=str, choices=["stl", "step"], help="Format to export the model ('stl' or 'step')")
     parser.add_argument("cube_count", type=int, choices=[1, 4], help="Number of cubes to create (1 or 4)")
-    parser.add_argument("--cube_size", type=float, default=2.397, help="Size of the cube engraved on the +X face")
-    parser.add_argument("--tube_size", type=float, default=0.595, help="Tube size and engraved on the -X face")
+    parser.add_argument("-c", "--cube_size", type=float, default=2.397, help="Size of the cube engraved on the +X face")
+    parser.add_argument("-t", "--tube_size", type=float, default=0.595, help="Tube size and engraved on the -X face")
+    parser.add_argument("-r", "--resolution", type=float, default=0.017, help="resolution of the printer")
+    parser.add_argument("-l", "--layer_height", type=float, default=0.050, help="Layer height for the model")
+    parser.add_argument("-s", "--support_len", type=float, default=5.0, help="Length of the support structure")
+    parser.add_argument("-bl", "--base_layers", type=int, default=5, help="Number of base layers for the support structure")
+    parser.add_argument("-pbs", "--position_box_size", type=float, nargs=2, default=[round_to_resolution(5000, resolution), round_to_resolution(2500, resolution)], metavar=('width', 'height'), help="Size of box to place the cubes")
+    parser.add_argument("-pbl", "--position_box_location", type=float, nargs=2, default=[0, 0], metavar=('x', 'y'), help="Location of placement box")
 
     # Print help if no arguments are provided
     #
@@ -305,31 +313,42 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    file_name = args.filename
-    file_format = args.format
-    cube_count = args.cube_count
-    cube_size = args.cube_size
-    tube_size = args.tube_size
-    layer_height = 0.050
-    support_len = 5.0
-    base_layers = 5
+    ctx = Context(
+        file_name=args.filename,
+        file_format=args.format,
+        cube_count=args.cube_count,
+        cube_size=args.cube_size,
+        tube_size=args.tube_size,
+        resolution=args.resolution,
+        layer_height=args.layer_height,
+        support_len=args.support_len,
+        base_layers=args.base_layers,
+        position_box_size=[args.position_box_size[0], args.position_box_size[1]],
+        position_box_location=[args.position_box_size[0], args.position_box_size[1]],
+    )
+    logging.debug(f"ctx: {ctx}")
 
-    build_object = doit(file_name, file_format, cube_count, cube_size, tube_size)
+    build_object = doit(ctx.file_name, ctx.file_format, ctx.cube_count, ctx.cube_size, ctx.tube_size)
 elif __name__ == "__cq_main__":
     logging.debug(f"__cq_main__ logging.info: __name__: {__name__}")
 
-    #file_name = "boxes-at-corners"
-    file_name = "supported_cube"
-    file_format = "stl"
-    cube_count = 1
-    layer_height = 0.030
-    base_layers = 5
-    cube_size = 2.397
-    tube_size = 0.595
-    support_len = 5.0
+    ctx = Context(
+        file_name="rerf-cubes",
+        file_format="stl",
+        cube_count=1,
+        cube_size=2.397,
+        tube_size=0.595,
+        resolution=resolution,
+        layer_height=0.050,
+        support_len=5.0,
+        base_layers=5,
+        position_box_size=[round_to_resolution(5000, resolution), round_to_resolution(2500, resolution)],
+        position_box_location=[0, 0],
+    )
+    logging.debug(f"ctx: {ctx}")
 
-    build_object = doit(file_name, file_format, cube_count, cube_size, tube_size)
+    build_object = doit(ctx.file_name, ctx.file_format, ctx.cube_count, ctx.cube_size, ctx.tube_size)
 
-    cq.show_object(build_object, name=file_name)
+    show_object(build_object, name=ctx.file_name)
 else:
     logging.info(f"Unreconized __name__: {__name__}")
