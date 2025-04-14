@@ -69,7 +69,7 @@ def generate_cube(ctx: Context, cube_number: int, cube_size: float, tube_size: f
     # Create a hole for the tube on the top face
     cube = cube.faces(">Z").workplane(centerOption="CenterOfMass").hole(tube_size)
 
-    # Shift the cube so its bottom face is on the build plate (Z = 0)
+    # Shift the cube so its bottom face is on the XY plane at Z=0
     cube = cube.translate((0, 0, cube_size / 2))
 
     return cube
@@ -138,7 +138,6 @@ def gnerate_square_support_base(ctx: Context, base_size: float, base_layers: flo
 
 def generate_support(
         ctx: Context,
-        layer_height: float,
         base_size: float,
         base_layers: float,
         support_len: float,
@@ -148,7 +147,6 @@ def generate_support(
     Generates a support structure for the cube.
 
     Parameters:
-        layer_height (float): The height of each layer.
         base_size (float): The size of the base.
         base_layers (float): The number of layers for the base.
         support_len (float): The length of the support structure.
@@ -159,10 +157,9 @@ def generate_support(
         CadQuery object representing the final support structure.
     """
 
-    # Create a cube for the base laying on the xy plane (build plate)
-    base_height = base_layers * layer_height
-    base = gnerate_square_support_base(ctx, base_size, base_layers, layer_height)
-    #base = cq.Workplane("XY").box(base_size, base_size, base_height, centered=(True, True, False))
+    # Create a cube for the base laying on the xy plane
+    base_height = base_layers * ctx.layer_height
+    base = gnerate_square_support_base(ctx, base_size, base_layers, ctx.layer_height)
 
     # Create three support pillars on top of the base
     support_pillar_len = support_len - base_height
@@ -205,58 +202,57 @@ def export_model(model: cq.Workplane, file_name: str, file_format: str):
         print("Unsupported format. Use 'stl' or 'step'.", file=sys.sdterr)
 
 def generate_build_object(ctx: Context):
-        # build plate size in pixels
-        layer_height = 0.030
-        base_layers = 6
-        support_len = 5.0
+        support_len = ctx.support_len
         support_diameter = round_to_resolution(0.75, ctx.resolution)
         support_tip_diameter = round_to_resolution(0.3, ctx.resolution)
 
         if ctx.cube_count == 1:
             # Create a single cube with support
-            support = generate_support(ctx, layer_height, ctx.cube_size, base_layers, support_len, support_diameter, support_tip_diameter)
+            support = generate_support(ctx, ctx.cube_size, ctx.base_layers, support_len, support_diameter, support_tip_diameter)
             cube = generate_cube(ctx, 1, ctx.cube_size, ctx.tube_size)
             cube = cube.translate((0, 0, support_len))
             build_object = cube.add(support)
         elif ctx.cube_count == 4:
+            # TODO: Add use of ctx.position_box_location
+
             # Create 4 cubes with support
             pixels_per_mm = 1 / ctx.resolution
-            build_plate_width = 9024 / pixels_per_mm
-            build_plate_height = 5120 / pixels_per_mm
+            position_box_width = ctx.position_box_size[0] / pixels_per_mm
+            position_box_height = ctx.position_box_size[1] / pixels_per_mm
             cube_size_half = ctx.cube_size / 2
 
             cube_number = 1
 
-            # Postion so the cube is in the upper left corner of build plate
-            support1 = generate_support(ctx, layer_height, ctx.cube_size, base_layers, support_len, support_diameter, support_tip_diameter)
+            # Postion so the cube is in the upper left corner of position_box
+            support1 = generate_support(ctx, ctx.cube_size, ctx.base_layers, support_len, support_diameter, support_tip_diameter)
             cube1 = generate_cube(ctx, cube_number, ctx.cube_size, ctx.tube_size)
             cube1 = cube1.translate((0, 0, support_len))
             cube1 = cube1.add(support1)
             cube1 = cube1.translate((cube_size_half, cube_size_half, 0))
             cube_number += 1
 
-            # Postion so the cube is in the lower left corner of build plate
-            support2 = generate_support(layer_height, ctx.cube_size, base_layers, support_len, support_diameter, support_tip_diameter)
+            # Postion so the cube is in the lower left corner of position_box
+            support2 = generate_support(ctx, ctx.cube_size, ctx.base_layers, support_len, support_diameter, support_tip_diameter)
             cube2 = generate_cube(ctx, cube_number, ctx.cube_size, ctx.tube_size)
             cube2 = cube2.translate((0, 0, support_len))
             cube2 = cube2.add(support2)
-            cube2 = cube2.translate((cube_size_half, build_plate_height - cube_size_half, 0))
+            cube2 = cube2.translate((cube_size_half, position_box_height - cube_size_half, 0))
             cube_number += 1
 
-            # Postion so the cube is in the upper right corner of build plate
-            support3 = generate_support(ctx, layer_height, ctx.cube_size, base_layers, support_len, support_diameter, support_tip_diameter)
+            # Postion so the cube is in the upper right corner of position_box
+            support3 = generate_support(ctx, ctx.cube_size, ctx.base_layers, support_len, support_diameter, support_tip_diameter)
             cube3 = generate_cube(ctx, cube_number, ctx.cube_size, ctx.tube_size)
             cube3 = cube3.translate((0, 0, support_len))
             cube3 = cube3.add(support3)
-            cube3 = cube3.translate((build_plate_width - cube_size_half, cube_size_half, 0))
+            cube3 = cube3.translate((position_box_width - cube_size_half, cube_size_half, 0))
             cube_number += 1
 
-            # Postion so the cube is in the lower right corner of build plate
-            support4 = generate_support(ctx, layer_height, ctx.cube_size, base_layers, support_len, support_diameter, support_tip_diameter)
+            # Postion so the cube is in the lower right corner of position_box
+            support4 = generate_support(ctx, ctx.cube_size, ctx.base_layers, support_len, support_diameter, support_tip_diameter)
             cube4 = generate_cube(ctx, cube_number, ctx.cube_size, ctx.tube_size)
             cube4 = cube4.translate((0, 0, support_len))
             cube4 = cube4.add(support4)
-            cube4 = cube4.translate((build_plate_width - cube_size_half, build_plate_height - cube_size_half, 0))
+            cube4 = cube4.translate((position_box_width - cube_size_half, position_box_height - cube_size_half, 0))
             cube_number += 1
 
             # Create the build object by uniting the four cubes
