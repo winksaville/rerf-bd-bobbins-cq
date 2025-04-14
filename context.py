@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 
-
-@dataclass(kw_only=True, frozen=True)
+# TODO: Removed frozen=True as I'm currrently updating, revisit!
+@dataclass(kw_only=True)
 class Context:
     file_name: str
     file_format: str

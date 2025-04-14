@@ -179,32 +179,33 @@ def generate_support(
     return build_object
 
 
-def export_model(model: cq.Workplane, file_name: str, file_format: str):
+def export_model(ctx: Context, model: cq.Workplane):
     """
     Exports the given CadQuery model to a file in the specified format.
 
     Parameters:
+        ctx (Context): The context object containing parameters for the model.
         model (cq.Workplane): The CadQuery model to export.
         filename (str): The base name of the output file (without extension).
-        file_format (str): The export format, either 'stl' or 'step'.
 
     Returns:
         None
     """
-    if file_format.lower() == "stl":
+
+    if ctx.file_format.lower() == "stl":
         # TODO: Allow ascii=True/False to be passed as a parameter
-        cq.Assembly(model).export(file_name + ".stl", exportType="STL", ascii=True)
-        #print(f"Exported as {filename}.stl")
-    elif file_format.lower() == "step":
-        cq.exporters.export(model, file_name + ".step")
-        #print(f"Exported as {filename}.step", file=sys.stderr)
+        cq.Assembly(model).export(ctx.file_name + ".stl", exportType="STL", ascii=True)
+    elif ctx.file_format.lower() == "step":
+        cq.exporters.export(model, ctx.file_name + ".step")
     else:
         print("Unsupported format. Use 'stl' or 'step'.", file=sys.sdterr)
 
-def generate_build_object(ctx: Context):
+def generate_build_object(ctx: Context) -> cq.Workplane:
         support_len = ctx.support_len
         support_diameter = round_to_resolution(0.75, ctx.resolution)
         support_tip_diameter = round_to_resolution(0.3, ctx.resolution)
+
+        pixels_per_mm = 1 / ctx.resolution
 
         if ctx.cube_count == 1:
             # Create a single cube with support
@@ -212,13 +213,13 @@ def generate_build_object(ctx: Context):
             cube = generate_cube(ctx, 1, ctx.cube_size, ctx.tube_size)
             cube = cube.translate((0, 0, support_len))
             build_object = cube.add(support)
-        elif ctx.cube_count == 4:
-            # TODO: Add use of ctx.position_box_location
 
+            # The size is the cube size since there is only one cube
+            ctx.position_box_size_pixels = [ctx.cube_size * pixels_per_mm, ctx.cube_size * pixels_per_mm]
+        elif ctx.cube_count == 4:
             # Create 4 cubes with support
-            pixels_per_mm = 1 / ctx.resolution
-            position_box_width = ctx.position_box_size[0] / pixels_per_mm
-            position_box_height = ctx.position_box_size[1] / pixels_per_mm
+            position_box_width = ctx.position_box_size_pixels[0] / pixels_per_mm
+            position_box_height = ctx.position_box_size_pixels[1] / pixels_per_mm
             cube_size_half = ctx.cube_size / 2
 
             cube_number = 1
@@ -257,9 +258,19 @@ def generate_build_object(ctx: Context):
 
             # Create the build object by uniting the four cubes
             build_object = cube1.add(cube2).add(cube3).add(cube4)
+
+
         else:
             print("Unsupported cube count, expected 1 or 4.", file=sys.stderr)
             return None
+
+        # Translate the build object to the specified position
+        build_object = build_object.translate((ctx.position_box_location[0], ctx.position_box_location[1], 0))
+
+        # Have the file name include the size and location of the position box
+        size_in_mm = [(ctx.position_box_size_pixels[0]) / pixels_per_mm, (ctx.position_box_size_pixels[1] / pixels_per_mm)]
+        location_in_mm = [(ctx.position_box_location[0]), (ctx.position_box_location[1])]
+        ctx.file_name = f"{ctx.file_name}-{size_in_mm[0]:5.3f}x{size_in_mm[1]:5.3f}-{location_in_mm[0]:5.3f}-{location_in_mm[1]:5.3f}"
 
         return build_object
 
@@ -273,7 +284,7 @@ def doit(ctx: Context):
         CadQuery object representing the final model.
     """
     build_object = generate_build_object(ctx)
-    export_model(build_object, ctx.file_name, ctx.file_format)
+    export_model(ctx, build_object)
     return build_object
 
 
@@ -293,7 +304,7 @@ if __name__ == "__main__":
     parser.add_argument("-l", "--layer_height", type=float, default=0.050, help="Layer height for the model")
     parser.add_argument("-s", "--support_len", type=float, default=5.0, help="Length of the support structure")
     parser.add_argument("-bl", "--base_layers", type=int, default=5, help="Number of base layers for the support structure")
-    parser.add_argument("-pbs", "--position_box_size", type=float, nargs=2, default=[round_to_resolution(5000, resolution), round_to_resolution(2500, resolution)], metavar=('width', 'height'), help="Size of box to place the cubes")
+    parser.add_argument("-pbs", "--position_box_size_pixels", type=float, nargs=2, default=[round_to_resolution(5000, resolution), round_to_resolution(2500, resolution)], metavar=('width', 'height'), help="Size of box to place the cubes")
     parser.add_argument("-pbl", "--position_box_location", type=float, nargs=2, default=[0, 0], metavar=('x', 'y'), help="Location of placement box")
 
     # Print help if no arguments are provided
@@ -319,8 +330,8 @@ if __name__ == "__main__":
         layer_height=args.layer_height,
         support_len=args.support_len,
         base_layers=args.base_layers,
-        position_box_size=[args.position_box_size[0], args.position_box_size[1]],
-        position_box_location=[args.position_box_size[0], args.position_box_size[1]],
+        position_box_size_pixels=[args.position_box_size_pixels[0], args.position_box_size_pixels[1]],
+        position_box_location=[args.position_box_location[0], args.position_box_location[1]],
     )
     logging.debug(f"ctx: {ctx}")
 
@@ -340,7 +351,7 @@ elif __name__ == "__cq_main__":
         layer_height=0.050,
         support_len=5.0,
         base_layers=5,
-        position_box_size=[round_to_resolution(5000, resolution), round_to_resolution(2500, resolution)],
+        position_box_size_pixels=[round_to_resolution(5000, resolution), round_to_resolution(2500, resolution)],
         position_box_location=[0, 0],
     )
     logging.debug(f"ctx: {ctx}")

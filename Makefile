@@ -25,4 +25,4 @@ activate:
 #	conda run -n $(ENV_NAME) $(SHELL)
 
 clean:
-	@rm -f *.stl *.step
+	@rm -f *.stl *.step *.pm4n
