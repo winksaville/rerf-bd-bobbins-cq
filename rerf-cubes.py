@@ -161,17 +161,25 @@ def generate_support(
     base_height = base_layers * ctx.layer_height
     base = gnerate_square_support_base(ctx, base_size, base_layers, ctx.layer_height)
 
-    # Create three support pillars on top of the base
-    support_pillar_len = support_len - base_height
+    # Add lenth to the support to guarantee here is overlap with cube and base
+    support_len_fudge = 4 * ctx.layer_height
+
+    # 1/2 of the support_len_fudge is into base the other 1/2 is into the cube
+    support_z = base_height - (support_len_fudge / 2)
+
+    # The support pillar is the length of the support includes the base_height
+    # so we exclude it but we add the fudge so there is significant overlap between
+    # the cube and the base.
+    support_pillar_len = (support_len - base_height) + support_len_fudge
     support_radius = support_base_diameter / 2
     support_loc_offset = (base_size / 2) - support_radius
 
     support1 = support_pillar(ctx, support_pillar_len, support_base_diameter, support_tip_diameter).clean()
-    support1 = support1.translate((-support_loc_offset, -support_loc_offset, base_height))
+    support1 = support1.translate((-support_loc_offset, -support_loc_offset, support_z))
     support2 = support_pillar(ctx, support_pillar_len, support_base_diameter, support_tip_diameter).clean()
-    support2 = support2.translate((support_loc_offset, -support_loc_offset, base_height))
+    support2 = support2.translate((support_loc_offset, -support_loc_offset, support_z))
     support3 = support_pillar(ctx, support_pillar_len, support_base_diameter, support_tip_diameter).clean()
-    support3 = support3.translate((0, support_loc_offset, base_height))
+    support3 = support3.translate((0, support_loc_offset, support_z))
     
     # Union the base and support
     build_object = base.add(support1).add(support2).add(support3).clean()
@@ -259,6 +267,37 @@ def generate_build_object(ctx: Context) -> cq.Workplane:
             # Create the build object by uniting the four cubes
             build_object = cube1.add(cube2).add(cube3).add(cube4)
 
+        elif ctx.cube_count == 9:
+            print("Creating 9 cubes")
+            position_box_width = ctx.position_box_size_pixels[0] / pixels_per_mm
+            position_box_height = ctx.position_box_size_pixels[1] / pixels_per_mm
+            cube_size_half = ctx.cube_size / 2
+            print(f"position_box_width: {position_box_width}, position_box_height: {position_box_height}, cube_size_half: {cube_size_half}")
+
+            y_initial = cube_size_half
+            x_initial = cube_size_half
+            y_step = (position_box_height - ctx.cube_size) / 3
+            x_step = (position_box_width - ctx.cube_size) / 3
+            print(f"y_initial: {y_initial}, x_initial: {x_initial}, y_step: {y_step}, x_step: {x_step}")
+            for i in range(3):
+                x = x_initial + (x_step * i)
+                for j in range(3):
+                    y = y_initial + (y_step * j)
+
+                    cube_number = i * 3 + j + 1
+
+                    print(f"cube_number: {cube_number}, x: {x}, y: {y}")
+                    # Postion so the cube is in the upper left corner of position_box
+                    support = generate_support(ctx, ctx.cube_size, ctx.base_layers, support_len, support_diameter, support_tip_diameter)
+                    cube = generate_cube(ctx, cube_number, ctx.cube_size, ctx.tube_size)
+                    cube = cube.translate((0, 0, support_len))
+                    cube = cube.add(support)
+                    cube = cube.translate((x, y, 0))
+
+                    if i == 0 and j == 0:
+                        build_object = cube
+                    else:
+                        build_object = build_object.add(cube)
 
         else:
             print("Unsupported cube count, expected 1 or 4.", file=sys.stderr)
@@ -288,24 +327,33 @@ def doit(ctx: Context):
     return build_object
 
 
+resolution = 0.017
+default_cube_size = resolution * 141
+default_tube_size = resolution * 37
+default_layer_height = 0.050
+default_resolution = resolution
+default_support_len = 5.0
+default_base_layers = 10 # Change to mm and then calculate the number of layers
+default_position_box_width = round_to_resolution(5000, default_resolution)
+default_position_box_height = round_to_resolution(2500, default_resolution)
+default_position_box_location_x = 0
+default_position_box_location_y = 0
 
 if __name__ == "__main__":
     logging.debug(f"__main__ logging.info: __name__: {__name__}")
 
-    resolution = 0.017
-
     parser = argparse.ArgumentParser(description="Generate 3D cubes with text inscriptions.")
     parser.add_argument("filename", type=str, help="Name of the output file (without extension)")
     parser.add_argument("format", type=str, choices=["stl", "step"], help="Format to export the model ('stl' or 'step')")
-    parser.add_argument("cube_count", type=int, choices=[1, 4], help="Number of cubes to create (1 or 4)")
-    parser.add_argument("-c", "--cube_size", type=float, default=2.397, help="Size of the cube engraved on the +X face")
-    parser.add_argument("-t", "--tube_size", type=float, default=0.595, help="Tube size and engraved on the -X face")
-    parser.add_argument("-r", "--resolution", type=float, default=0.017, help="resolution of the printer")
-    parser.add_argument("-l", "--layer_height", type=float, default=0.050, help="Layer height for the model")
-    parser.add_argument("-s", "--support_len", type=float, default=5.0, help="Length of the support structure")
-    parser.add_argument("-bl", "--base_layers", type=int, default=5, help="Number of base layers for the support structure")
-    parser.add_argument("-pbs", "--position_box_size_pixels", type=float, nargs=2, default=[round_to_resolution(5000, resolution), round_to_resolution(2500, resolution)], metavar=('width', 'height'), help="Size of box to place the cubes")
-    parser.add_argument("-pbl", "--position_box_location", type=float, nargs=2, default=[0, 0], metavar=('x', 'y'), help="Location of placement box")
+    parser.add_argument("cube_count", type=int, choices=[1, 4, 9], help="Number of cubes to create (1, 4 or 9)")
+    parser.add_argument("-c", "--cube_size", type=float, default=default_cube_size, help=f"Cube size engraved on the +X face, defaults to {default_cube_size:5.3f}")
+    parser.add_argument("-t", "--tube_size", type=float, default=default_tube_size, help=f"Tube size engraved on the -X face, defaults to {default_tube_size:5.3f}")
+    parser.add_argument("-r", "--resolution", type=float, default=default_resolution, help=f"resolution of the printer, defaults to {default_resolution}")
+    parser.add_argument("-l", "--layer_height", type=float, default=default_layer_height, help=f"Layer height of the printer, defaults to {default_layer_height:5.3f}")
+    parser.add_argument("-s", "--support_len", type=float, default=default_support_len, help=f"Length of the support structure, defaults to {default_support_len:5.3f}")
+    parser.add_argument("-bl", "--base_layers", type=int, default=default_base_layers, help=f"Number of layers for the base, defaults to {default_base_layers}")
+    parser.add_argument("-pbsp", "--position_box_size_pixels", type=float, nargs=2, default=[default_position_box_width, default_position_box_height], metavar=('width', 'height'), help=f"Size of box to place the cubes, defaults to ({default_position_box_width}, {default_position_box_height})")
+    parser.add_argument("-pbl", "--position_box_location", type=float, nargs=2, default=[default_position_box_location_x, default_position_box_location_y], metavar=('x', 'y'), help=f"Location of placement box, defaults to ({default_position_box_location_x}, {default_position_box_location_y})")
 
     # Print help if no arguments are provided
     #
@@ -345,14 +393,14 @@ elif __name__ == "__cq_main__":
         file_name="rerf-cubes",
         file_format="stl",
         cube_count=1,
-        cube_size=2.397,
-        tube_size=0.595,
+        cube_size=default_cube_size,
+        tube_size=default_tube_size,
         resolution=resolution,
-        layer_height=0.050,
-        support_len=5.0,
-        base_layers=5,
-        position_box_size_pixels=[round_to_resolution(5000, resolution), round_to_resolution(2500, resolution)],
-        position_box_location=[0, 0],
+        layer_height=default_layer_height,
+        support_len=default_support_len,
+        base_layers=default_base_layers,
+        position_box_size_pixels=[default_position_box_width, default_position_box_height],
+        position_box_location=[default_position_box_location_x, default_position_box_location_y],
     )
     logging.debug(f"ctx: {ctx}")
 

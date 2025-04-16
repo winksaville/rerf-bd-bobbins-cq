@@ -57,23 +57,58 @@ Activate the environment using:
 conda activate cq
 ```
 
+### Help
+
+To see the help message for the script, run:
+```sh
+$ ./rerf-cubes.py -h
+usage: rerf-cubes.py [-h] [-c CUBE_SIZE] [-t TUBE_SIZE] [-r RESOLUTION] [-l LAYER_HEIGHT] [-s SUPPORT_LEN] [-bl BASE_LAYERS] [-pbsp width height] [-pbl x y] filename {stl,step} {1,4,9}
+
+Generate 3D cubes with text inscriptions.
+
+positional arguments:
+  filename              Name of the output file (without extension)
+  {stl,step}            Format to export the model ('stl' or 'step')
+  {1,4,9}               Number of cubes to create (1, 4 or 9)
+
+options:
+  -h, --help            show this help message and exit
+  -c CUBE_SIZE, --cube_size CUBE_SIZE
+                        Cube size engraved on the +X face, defaults to 2.397
+  -t TUBE_SIZE, --tube_size TUBE_SIZE
+                        Tube size engraved on the -X face, defaults to 0.629
+  -r RESOLUTION, --resolution RESOLUTION
+                        resolution of the printer, defaults to 0.017
+  -l LAYER_HEIGHT, --layer_height LAYER_HEIGHT
+                        Layer height of the printer, defaults to 0.050
+  -s SUPPORT_LEN, --support_len SUPPORT_LEN
+                        Length of the support structure, defaults to 5.000
+  -bl BASE_LAYERS, --base_layers BASE_LAYERS
+                        Number of layers for the base, defaults to 10
+  -pbsp width height, --position_box_size_pixels width height
+                        Size of box to place the cubes, defaults to (5000.006, 2500.003)
+  -pbl x y, --position_box_location x y
+                        Location of placement box, defaults to (0, 0)
+```
+
+
 ### Running the App
 
 Ensure the environment is activated, see [Activating the Environment](#activating-the-environment). Then run the script directly with:
 
 ```sh
-./rerf-cubes <filename> <format> <cube_number> <cube_size> <tube_size>
+./rerf-cubes.py <filename> <format> <number_of_cubes> [options]
 ```
 
 Example:
 
 ```sh
-./rerf-cubes cube2 stl 5 2.397 0.595
+./rerf-cubes.py cube2 stl 1
 ```
 
 ### Cleaning Up
 
-Remove generated files (`.stl`, `.step`) with:
+Remove generated files (`.stl`, `.step`, `pm4n`) with:
 
 ```sh
 make clean

@@ -12,5 +12,5 @@ class Context:
     layer_height: float
     support_len: float
     base_layers: int
-    position_box_size: list[float, float]
+    position_box_size_pixels: list[float, float]
     position_box_location: list[float, float]
