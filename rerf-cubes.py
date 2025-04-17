@@ -9,10 +9,6 @@ from context import Context
 logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Resulution for of my printer
-# TODO: Make a context class and add this to it
-# and pass the context to the functions.
-# TODO: Add x, y, z resolution to the context class
 
 def round_to_resolution(value: float, resolution: float) -> float:
     """
@@ -49,8 +45,8 @@ def generate_cube(ctx: Context, cube_number: int, cube_size: float, tube_size: f
     cube_size_text = f"{cube_size:5.3f}"
     tube_size_text = f"{tube_size:5.3f}"
 
-    htext = round_to_resolution(0.7, resolution)
-    dcut = round_to_resolution(0.1, resolution)
+    htext = round_to_resolution(0.8, resolution)
+    dcut = round_to_resolution(0.2, resolution)
 
     def make_text(s):
         def callback(wp):
@@ -64,7 +60,7 @@ def generate_cube(ctx: Context, cube_number: int, cube_size: float, tube_size: f
     # Chisel text into the respective faces
     cube = cube.faces(">X").invoke(make_text(cube_size_text))
     cube = cube.faces("<X").invoke(make_text(tube_size_text))
-    cube = cube.faces(">Y").invoke(make_text(cube_number_text))
+    cube = cube.faces("<Y").invoke(make_text(cube_number_text))
 
     # Create a hole for the tube on the top face
     cube = cube.faces(">Z").workplane(centerOption="CenterOfMass").hole(tube_size)
@@ -208,122 +204,66 @@ def export_model(ctx: Context, model: cq.Workplane):
     else:
         print("Unsupported format. Use 'stl' or 'step'.", file=sys.sdterr)
 
-def generate_build_object(ctx: Context) -> cq.Workplane:
-        support_len = ctx.support_len
-        support_diameter = round_to_resolution(0.75, ctx.resolution)
-        support_tip_diameter = round_to_resolution(0.3, ctx.resolution)
-
-        pixels_per_mm = 1 / ctx.resolution
-
-        if ctx.cube_count == 1:
-            # Create a single cube with support
-            support = generate_support(ctx, ctx.cube_size, ctx.base_layers, support_len, support_diameter, support_tip_diameter)
-            cube = generate_cube(ctx, 1, ctx.cube_size, ctx.tube_size)
-            cube = cube.translate((0, 0, support_len))
-            build_object = cube.add(support)
-
-            # The size is the cube size since there is only one cube
-            ctx.position_box_size_pixels = [ctx.cube_size * pixels_per_mm, ctx.cube_size * pixels_per_mm]
-        elif ctx.cube_count == 4:
-            # Create 4 cubes with support
-            position_box_width = ctx.position_box_size_pixels[0] / pixels_per_mm
-            position_box_height = ctx.position_box_size_pixels[1] / pixels_per_mm
-            cube_size_half = ctx.cube_size / 2
-
-            cube_number = 1
-
-            # Postion so the cube is in the upper left corner of position_box
-            support1 = generate_support(ctx, ctx.cube_size, ctx.base_layers, support_len, support_diameter, support_tip_diameter)
-            cube1 = generate_cube(ctx, cube_number, ctx.cube_size, ctx.tube_size)
-            cube1 = cube1.translate((0, 0, support_len))
-            cube1 = cube1.add(support1)
-            cube1 = cube1.translate((cube_size_half, cube_size_half, 0))
-            cube_number += 1
-
-            # Postion so the cube is in the lower left corner of position_box
-            support2 = generate_support(ctx, ctx.cube_size, ctx.base_layers, support_len, support_diameter, support_tip_diameter)
-            cube2 = generate_cube(ctx, cube_number, ctx.cube_size, ctx.tube_size)
-            cube2 = cube2.translate((0, 0, support_len))
-            cube2 = cube2.add(support2)
-            cube2 = cube2.translate((cube_size_half, position_box_height - cube_size_half, 0))
-            cube_number += 1
-
-            # Postion so the cube is in the upper right corner of position_box
-            support3 = generate_support(ctx, ctx.cube_size, ctx.base_layers, support_len, support_diameter, support_tip_diameter)
-            cube3 = generate_cube(ctx, cube_number, ctx.cube_size, ctx.tube_size)
-            cube3 = cube3.translate((0, 0, support_len))
-            cube3 = cube3.add(support3)
-            cube3 = cube3.translate((position_box_width - cube_size_half, cube_size_half, 0))
-            cube_number += 1
-
-            # Postion so the cube is in the lower right corner of position_box
-            support4 = generate_support(ctx, ctx.cube_size, ctx.base_layers, support_len, support_diameter, support_tip_diameter)
-            cube4 = generate_cube(ctx, cube_number, ctx.cube_size, ctx.tube_size)
-            cube4 = cube4.translate((0, 0, support_len))
-            cube4 = cube4.add(support4)
-            cube4 = cube4.translate((position_box_width - cube_size_half, position_box_height - cube_size_half, 0))
-            cube_number += 1
-
-            # Create the build object by uniting the four cubes
-            build_object = cube1.add(cube2).add(cube3).add(cube4)
-
-        elif ctx.cube_count == 9:
-            print("Creating 9 cubes")
-            position_box_width = ctx.position_box_size_pixels[0] / pixels_per_mm
-            position_box_height = ctx.position_box_size_pixels[1] / pixels_per_mm
-            cube_size_half = ctx.cube_size / 2
-            print(f"position_box_width: {position_box_width}, position_box_height: {position_box_height}, cube_size_half: {cube_size_half}")
-
-            y_initial = cube_size_half
-            x_initial = cube_size_half
-            y_step = (position_box_height - ctx.cube_size) / 3
-            x_step = (position_box_width - ctx.cube_size) / 3
-            print(f"y_initial: {y_initial}, x_initial: {x_initial}, y_step: {y_step}, x_step: {x_step}")
-            for i in range(3):
-                x = x_initial + (x_step * i)
-                for j in range(3):
-                    y = y_initial + (y_step * j)
-
-                    cube_number = i * 3 + j + 1
-
-                    print(f"cube_number: {cube_number}, x: {x}, y: {y}")
-                    # Postion so the cube is in the upper left corner of position_box
-                    support = generate_support(ctx, ctx.cube_size, ctx.base_layers, support_len, support_diameter, support_tip_diameter)
-                    cube = generate_cube(ctx, cube_number, ctx.cube_size, ctx.tube_size)
-                    cube = cube.translate((0, 0, support_len))
-                    cube = cube.add(support)
-                    cube = cube.translate((x, y, 0))
-
-                    if i == 0 and j == 0:
-                        build_object = cube
-                    else:
-                        build_object = build_object.add(cube)
-
-        else:
-            print("Unsupported cube count, expected 1 or 4.", file=sys.stderr)
-            return None
-
-        # Translate the build object to the specified position
-        build_object = build_object.translate((ctx.position_box_location[0], ctx.position_box_location[1], 0))
-
-        # Have the file name include the size and location of the position box
-        size_in_mm = [(ctx.position_box_size_pixels[0]) / pixels_per_mm, (ctx.position_box_size_pixels[1] / pixels_per_mm)]
-        location_in_mm = [(ctx.position_box_location[0]), (ctx.position_box_location[1])]
-        ctx.file_name = f"{ctx.file_name}-{size_in_mm[0]:5.3f}x{size_in_mm[1]:5.3f}-{location_in_mm[0]:5.3f}-{location_in_mm[1]:5.3f}"
-
-        return build_object
-
-def doit(ctx: Context):
+def generate_using_rows_cols(ctx: Context, row_count: int, col_count: int) -> cq.Workplane:
     """
-    Generates a 3D model of cubes with text inscriptions and exports it to a file.
+    Generates a 3D object using the specified number of rows and columns.
+
+    Each cube is placed in a grid pattern within the specified position box.
+    The cubes are positioned so that they are centered within the position box.
+    The cubes are also supported by a support structure.
+    The function returns the final 3D object.
 
     Parameters:
         ctx (Context): The context object containing parameters for the model.
+        column_count (int): The number of columns to create.
+        row_count (int): The number of rows to create.
     Returns:
-        CadQuery object representing the final model.
+        cq.Workplane: The final 3D object representing the cubes and support structures.
     """
-    build_object = generate_build_object(ctx)
-    export_model(ctx, build_object)
+    support_len = ctx.support_len
+    support_diameter = round_to_resolution(0.75, ctx.resolution)
+    support_tip_diameter = round_to_resolution(0.3, ctx.resolution)
+
+    pixels_per_mm = 1 / ctx.resolution
+
+    position_box_width = ctx.position_box_size_pixels[0] / pixels_per_mm
+    position_box_height = ctx.position_box_size_pixels[1] / pixels_per_mm
+    cube_size_half = ctx.cube_size / 2
+    print(f"position_box_width: {position_box_width}, position_box_height: {position_box_height}, cube_size_half: {cube_size_half}")
+
+    y_initial = cube_size_half
+    x_initial = cube_size_half
+    y_step = (position_box_height - ctx.cube_size) / 3
+    x_step = (position_box_width - ctx.cube_size) / 3
+    print(f"y_initial: {y_initial}, x_initial: {x_initial}, y_step: {y_step}, x_step: {x_step}")
+    for i in range(col_count):
+        x = x_initial + (x_step * i)
+        for j in range(row_count):
+            y = y_initial + (y_step * j)
+
+            cube_number = i * 3 + j + 1
+
+            print(f"cube_number: {cube_number}, x: {x}, y: {y}")
+            # Postion so the cube is in the upper left corner of position_box
+            support = generate_support(ctx, ctx.cube_size, ctx.base_layers, support_len, support_diameter, support_tip_diameter)
+            cube = generate_cube(ctx, cube_number, ctx.cube_size, ctx.tube_size)
+            cube = cube.translate((0, 0, support_len))
+            cube = cube.add(support)
+            cube = cube.translate((x, y, 0))
+
+            if i == 0 and j == 0:
+                build_object = cube
+            else:
+                build_object = build_object.add(cube)
+
+    # Translate the build object to the specified position
+    build_object = build_object.translate((ctx.position_box_location[0], ctx.position_box_location[1], 0))
+
+    # Have the file name include the size and location of the position box
+    size_in_mm = [(ctx.position_box_size_pixels[0]) / pixels_per_mm, (ctx.position_box_size_pixels[1] / pixels_per_mm)]
+    location_in_mm = [(ctx.position_box_location[0]), (ctx.position_box_location[1])]
+    ctx.file_name = f"{ctx.file_name}_rc-{ctx.row_count}_cc-{ctx.col_count}_lh-{ctx.layer_height}_box-{size_in_mm[0]:5.3f}x{size_in_mm[1]:5.3f}_loc-{location_in_mm[0]:5.3f}-{location_in_mm[1]:5.3f}"
+
     return build_object
 
 
@@ -342,10 +282,24 @@ default_position_box_location_y = 0
 if __name__ == "__main__":
     logging.debug(f"__main__ logging.info: __name__: {__name__}")
 
+    def row_col_checker(value: str) -> int:
+        """
+        Custom type checker for row and column counts.
+        Ensures the value is an integer greater than or equal to 1.
+        """
+        try:
+            ivalue = int(value)
+            if ivalue < 1:
+                raise argparse.ArgumentTypeError(f"{value} is not a valid row/column count (must be >= 1)")
+            return ivalue
+        except ValueError:
+            raise argparse.ArgumentTypeError(f"{value} is not a valid row/column count (must be >= 1)")
+
     parser = argparse.ArgumentParser(description="Generate 3D cubes with text inscriptions.")
     parser.add_argument("filename", type=str, help="Name of the output file (without extension)")
     parser.add_argument("format", type=str, choices=["stl", "step"], help="Format to export the model ('stl' or 'step')")
-    parser.add_argument("cube_count", type=int, choices=[1, 4, 9], help="Number of cubes to create (1, 4 or 9)")
+    parser.add_argument("row_count", type=row_col_checker, help="Number of rows to create (>= 1)")
+    parser.add_argument("col_count", type=row_col_checker, help="Number of columns to create (>= 1)")
     parser.add_argument("-c", "--cube_size", type=float, default=default_cube_size, help=f"Cube size engraved on the +X face, defaults to {default_cube_size:5.3f}")
     parser.add_argument("-t", "--tube_size", type=float, default=default_tube_size, help=f"Tube size engraved on the -X face, defaults to {default_tube_size:5.3f}")
     parser.add_argument("-r", "--resolution", type=float, default=default_resolution, help=f"resolution of the printer, defaults to {default_resolution}")
@@ -366,12 +320,15 @@ if __name__ == "__main__":
         parser.print_help()
         sys.exit(0)
 
+    # Parse the command line arguments
     args = parser.parse_args()
 
+    # Initialize the context with the parsed arguments
     ctx = Context(
         file_name=args.filename,
         file_format=args.format,
-        cube_count=args.cube_count,
+        row_count=args.row_count,
+        col_count=args.col_count,
         cube_size=args.cube_size,
         tube_size=args.tube_size,
         resolution=args.resolution,
@@ -383,16 +340,21 @@ if __name__ == "__main__":
     )
     logging.debug(f"ctx: {ctx}")
 
-    build_object = doit(ctx)
+    # Generate the 3D object using the specified number of rows and columns
+    # and export it to the specified file format
+    build_object = generate_using_rows_cols(ctx, ctx.row_count, ctx.col_count)
+    export_model(ctx, build_object)
+
 elif __name__ == "__cq_main__":
     logging.debug(f"__cq_main__ logging.info: __name__: {__name__}")
 
+    # Initialize the context with default values
     resolution = 0.017
-
     ctx = Context(
         file_name="rerf-cubes",
         file_format="stl",
-        cube_count=1,
+        row_count=3,
+        col_count=3,
         cube_size=default_cube_size,
         tube_size=default_tube_size,
         resolution=resolution,
@@ -404,8 +366,9 @@ elif __name__ == "__cq_main__":
     )
     logging.debug(f"ctx: {ctx}")
 
-    build_object = doit(ctx)
-
+    # Generate the 3D object using the specified number of rows and columns
+    # and use the cadquery show_object function to display it
+    build_object = generate_using_rows_cols(ctx, ctx.row_count, ctx.col_count)
     show_object(build_object, name=ctx.file_name)
 else:
     logging.info(f"Unreconized __name__: {__name__}")

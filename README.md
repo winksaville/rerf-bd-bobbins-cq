@@ -62,14 +62,15 @@ conda activate cq
 To see the help message for the script, run:
 ```sh
 $ ./rerf-cubes.py -h
-usage: rerf-cubes.py [-h] [-c CUBE_SIZE] [-t TUBE_SIZE] [-r RESOLUTION] [-l LAYER_HEIGHT] [-s SUPPORT_LEN] [-bl BASE_LAYERS] [-pbsp width height] [-pbl x y] filename {stl,step} {1,4,9}
+usage: rerf-cubes.py [-h] [-c CUBE_SIZE] [-t TUBE_SIZE] [-r RESOLUTION] [-l LAYER_HEIGHT] [-s SUPPORT_LEN] [-bl BASE_LAYERS] [-pbsp width height] [-pbl x y] filename {stl,step} row_count col_count
 
 Generate 3D cubes with text inscriptions.
 
 positional arguments:
   filename              Name of the output file (without extension)
   {stl,step}            Format to export the model ('stl' or 'step')
-  {1,4,9}               Number of cubes to create (1, 4 or 9)
+  row_count             Number of rows to create (>= 1)
+  col_count             Number of columns to create (>= 1)
 
 options:
   -h, --help            show this help message and exit
@@ -97,7 +98,7 @@ options:
 Ensure the environment is activated, see [Activating the Environment](#activating-the-environment). Then run the script directly with:
 
 ```sh
-./rerf-cubes.py <filename> <format> <number_of_cubes> [options]
+./rerf-cubes.py <filename> <format> <row_count> <col_count> [options]
 ```
 
 Example:
