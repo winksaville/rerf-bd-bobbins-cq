@@ -10,9 +10,12 @@ class Context:
     col_count: int
     cube_size: float
     tube_size: float
-    resolution: float
+    bed_resolution: float # TODO change to tuple[float, float] for x, y
+    bed_size: tuple[float, float] # multiple of bed_resolution
     layer_height: float
     support_len: float
     base_layers: int
-    position_box_size_pixels: list[float, float]
-    position_box_location: list[float, float]
+    position_box_size: tuple[float, float]
+    position_box_location: tuple[float, float]
+    rerf: bool
+    show: bool
