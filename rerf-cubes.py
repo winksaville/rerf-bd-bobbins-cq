@@ -25,23 +25,24 @@ def round_to_resolution(value: float, resolution: float) -> float:
     return round(value / resolution) * resolution
 
 
-def generate_cube(ctx: Context, cube_number: int, cube_size: float, tube_size: float):
+def generate_cube(ctx: Context, rerf_number: int, cube_number: int, cube_size: float, tube_size: float) ->   cq.Workplane:
     """
     Generates a 3D cube with text inscriptions on specified faces.
 
     Parameters:
-        cube_number (int): The cube number to engrave on the +Y face.
-        cube_size (float): The size of the cube to engrave on the +X face.
-        tube_size (float): The tube size to engrave on the -X face.
+        rerf_number (int): The rerf number to engrave on the <Y face, not printed if <= 0.
+        cube_number (int): The cube number to engrave on the >Y face.
+        cube_size (float): The size of the cube to engrave on the >X face.
+        tube_size (float): The tube size to engrave on the <X face.
 
     Returns:
         CadQuery object representing the final cube.
     """
-
     # Create the base cube centered at (0,0,0)
     cube = cq.Workplane("XY").box(cube_size, cube_size, cube_size)
 
     # Prepare formatted text with three significant digits
+    rerf_number_text = f"{rerf_number}"
     cube_number_text = f"{cube_number}"
     cube_size_text = f"{cube_size:5.3f}"
     tube_size_text = f"{tube_size:5.3f}"
@@ -61,7 +62,9 @@ def generate_cube(ctx: Context, cube_number: int, cube_size: float, tube_size: f
     # Chisel text into the respective faces
     cube = cube.faces(">X").invoke(make_text(cube_size_text))
     cube = cube.faces("<X").invoke(make_text(tube_size_text))
-    cube = cube.faces("<Y").invoke(make_text(cube_number_text))
+    if rerf_number > 0:
+        cube = cube.faces("<Y").invoke(make_text(rerf_number_text))
+    cube = cube.faces(">Y").invoke(make_text(cube_number_text))
 
     # Create a hole for the tube on the top face
     cube = cube.faces(">Z").workplane(centerOption="CenterOfMass").hole(tube_size)
@@ -184,30 +187,31 @@ def generate_support(
     return build_object
 
 
-def export_model(ctx: Context, model: cq.Workplane):
+def export_model(ctx: Context, model: cq.Workplane, file_name: str, file_format) -> None:
     """
     Exports the given CadQuery model to a file in the specified format.
 
     Parameters:
         ctx (Context): The context object containing parameters for the model.
         model (cq.Workplane): The CadQuery model to export.
-        filename (str): The base name of the output file (without extension).
+        file_name (str): The base name of the output file (without extension).
+        file_format (str): The format to export the model ('stl' or 'step').
 
     Returns:
         None
     """
 
-    if ctx.file_format.lower() == "stl":
+    if file_format.lower() == "stl":
         # TODO: Allow ascii=True/False to be passed as a parameter
-        cq.Assembly(model).export(ctx.file_name + ".stl", exportType="STL", ascii=True)
-    elif ctx.file_format.lower() == "step":
-        cq.exporters.export(model, ctx.file_name + ".step")
+        cq.Assembly(model).export(file_name + ".stl", exportType="STL", ascii=True)
+    elif file_format.lower() == "step":
+        cq.exporters.export(model, file_name + ".step")
     else:
         print("Unsupported format. Use 'stl' or 'step'.", file=sys.sdterr)
 
-def generate_using_rows_cols(ctx: Context, row_count: int, col_count: int) -> cq.Workplane:
+def generate_cubes_with_support(ctx: Context, rerf_number: int, row_count: int, col_count: int) -> cq.Workplane:
     """
-    Generates a 3D object using the specified number of rows and columns.
+    Generates a one or more 3D cubes and support as specified by row_count and col_count.
 
     Each cube is placed in a grid pattern within the specified position box.
     The cubes are positioned so that they are centered within the position box.
@@ -216,6 +220,7 @@ def generate_using_rows_cols(ctx: Context, row_count: int, col_count: int) -> cq
 
     Parameters:
         ctx (Context): The context object containing parameters for the model.
+        rerf_number (int): The rerf number to engrave on the >Y face, not printed if <= 0.
         column_count (int): The number of columns to create.
         row_count (int): The number of rows to create.
     Returns:
@@ -246,10 +251,10 @@ def generate_using_rows_cols(ctx: Context, row_count: int, col_count: int) -> cq
 
             cube_number = i * 3 + j + 1
 
-            print(f"cube_number: {cube_number}, x: {x:5.3f}, y: {y:5.3f}")
+            print(f"rerf_number: {rerf_number} cube_number: {cube_number} x: {x:5.3f}, y: {y:5.3f}")
             # Postion so the cube is in the upper left corner of position_box
             support = generate_support(ctx, ctx.cube_size, ctx.base_layers, support_len, support_diameter, support_tip_diameter)
-            cube = generate_cube(ctx, cube_number, ctx.cube_size, ctx.tube_size)
+            cube = generate_cube(ctx, rerf_number, cube_number, ctx.cube_size, ctx.tube_size)
             cube = cube.translate((0, 0, support_len))
             cube = cube.add(support)
             cube = cube.translate((x, y, 0))
@@ -259,14 +264,16 @@ def generate_using_rows_cols(ctx: Context, row_count: int, col_count: int) -> cq
             else:
                 build_object = build_object.add(cube)
 
-    # Translate the build object to the specified position
-    build_object = build_object.translate((ctx.position_box_location[0], ctx.position_box_location[1], 0))
+    # Translate the build object to the specified position if not at (0,0)
+    if ctx.position_box_location[0] > 0.0 and ctx.position_box_location[1] > 0.0:
+        print(f"position_box_location_x: {ctx.position_box_location[0]:5.3f}, position_box_location_y: {ctx.position_box_location[1]:5.3f}")
+        build_object = build_object.translate((ctx.position_box_location[0], ctx.position_box_location[1], 0))
 
-    # Have the file name include the size and location of the position box
+    # Create the file_name if this isn't an rerf build and there is a file name
     size_in_mm = ctx.position_box_size[0], ctx.position_box_size[1]
     location_in_mm = [(ctx.position_box_location[0]), (ctx.position_box_location[1])]
-    if ctx.file_name != "":
-        if location_in_mm[0] > 0 | location_in_mm[1] > 0:
+    if ctx.rerf == False and ctx.file_name != "":
+        if (location_in_mm[0] > 0.0) or (location_in_mm[1] > 0.0):
             pos_in_mm_str = f"_pos-{location_in_mm[0]:5.3f}-{location_in_mm[1]:5.3f}"
         else:
             pos_in_mm_str = ""
@@ -318,7 +325,7 @@ if __name__ == "__main__":
     parser.add_argument("-bl", "--base_layers", type=int, default=default_base_layers, help=f"Number of layers for the base, defaults to {default_base_layers}")
     parser.add_argument("-pbsp", "--position_box_size", type=float, nargs=2, default=[default_position_box_width, default_position_box_height], metavar=('width', 'height'), help=f"Size of box to disperse the cubes into, defaults to ({default_position_box_width}, {default_position_box_height})")
     parser.add_argument("-pbl", "--position_box_location", type=float, nargs=2, default=[default_position_box_location_x, default_position_box_location_y], metavar=('x', 'y'), help=f"Location of position_box, defaults to ({default_position_box_location_x}, {default_position_box_location_y})")
-    #parser.add_argument("-re", "--rerf", type=bool, action=argparse.BooleanOptionalAction, default=default_rerf, help=f"If true generate 8 objects in R_E_R_F orientation, defaults to {default_rerf}")
+    parser.add_argument("-re", "--rerf", type=bool, action=argparse.BooleanOptionalAction, default=default_rerf, help=f"If true generate 8 objects in R_E_R_F orientation, defaults to {default_rerf}")
     parser.add_argument("-s", "--show", type=bool, action=argparse.BooleanOptionalAction, default=default_show, help="Show the created object in the viewer")
 
     # Print help if no arguments are provided
@@ -350,19 +357,69 @@ if __name__ == "__main__":
         base_layers=args.base_layers,
         position_box_size=[args.position_box_size[0], args.position_box_size[1]],
         position_box_location=[args.position_box_location[0], args.position_box_location[1]],
-        rerf=None, #rerf=args.rerf,
+        rerf=args.rerf,
         show=args.show,
     )
     logging.debug(f"ctx: {ctx}")
 
-    # Generate the 3D object using the specified number of rows and columns
-    # and export it to the specified file format
-    build_object = generate_using_rows_cols(ctx, ctx.row_count, ctx.col_count)
+    if ctx.rerf:
+        # Were going to generate 2 rows with and 4 columns of
+        # build_objects positioning them on the build plate
+        rerf_number_rows = 2
+        rerf_number_cols = 4
+
+        # There will be rerf_number_rows * rerf_number_cols number of rerf objects
+        # We'll calculate the length of x and y for each position box and use 90%:
+        bps_x = (ctx.bed_size[0] / rerf_number_cols) * 0.9
+        bps_y = (ctx.bed_size[1] / rerf_number_rows) * 0.9
+
+        # Round the position box size to the nearest multiple of the bed resolution
+        ctx.position_box_size[0] = round_to_resolution(bps_x, ctx.bed_resolution)
+        ctx.position_box_size[1] = round_to_resolution(bps_y, ctx.bed_resolution)
+
+        # Calculate the step size for the X and Y positions
+        rerf_x_step = ctx.bed_size[0] / (rerf_number_cols)
+        rerf_y_step = ctx.bed_size[1] / (rerf_number_rows)
+
+        # Calculate the initial X position for the first column
+        rerf_x_initial = ctx.bed_size[0] / (rerf_number_rows * 2)
+        rerf_y_initial = ctx.bed_size[1] / (rerf_number_cols * 2)
+
+        for rerf_number_col in range(rerf_number_cols):
+            # Calculate initial Y position for this row
+            x = round_to_resolution(rerf_x_initial + (rerf_number_col * rerf_x_step), ctx.bed_resolution)
+            for rerf_number_row in range(rerf_number_rows):
+
+                # Calcuate the position for this set of cubes
+                y = round_to_resolution(rerf_y_initial + (rerf_number_row * rerf_y_step), ctx.bed_resolution)
+                ctx.position_box_location[0] = x
+                ctx.position_box_location[1] = y
+                rerf_number = (rerf_number_col * rerf_number_rows) + rerf_number_row + 1
+
+                # Generate the cubes
+                bo = generate_cubes_with_support(ctx, rerf_number, ctx.row_count, ctx.col_count)
+
+                # Group them into a single object
+                if rerf_number_col == 0 and rerf_number_row == 0:
+                    build_object = bo
+                else:
+                    build_object = build_object.add(bo)
+    else:
+        # Generate a 3D object using the specified number of rows and columns
+        # and export it to the specified file format
+        build_object = generate_cubes_with_support(ctx, 0, ctx.row_count, ctx.col_count)
+
+    if ctx.rerf:
+        # Initialize the file name for the rerf object
+        ctx.file_name = f"{ctx.file_name}_rerf-{ctx.rerf}_rc-{ctx.row_count}_cc-{ctx.col_count}_lh-{ctx.layer_height}"
+
+    # Export the file if a file name is provided
     if ctx.file_name != "":
         # Export the object to the specified file name and file format defined in ctx
-        export_model(ctx, build_object)
+        export_model(ctx, build_object, ctx.file_name, ctx.file_format)
+
+    # Show the object in the viewer if the show flag is set
     if ctx.show:
-        # Show the object in the viewer
         show(build_object)
 elif __name__ == "__cq_main__":
     logging.debug(f"__cq_main__ logging.info: __name__: {__name__}")
@@ -383,12 +440,14 @@ elif __name__ == "__cq_main__":
         base_layers=default_base_layers,
         position_box_size=[default_position_box_width, default_position_box_height],
         position_box_location=[default_position_box_location_x, default_position_box_location_y],
+        rerf=default_rerf,
+        show=default_show,
     )
     logging.debug(f"ctx: {ctx}")
 
     # Generate the 3D object using the specified number of rows and columns
     # and use the cadquery show_object function to display it
-    build_object = generate_using_rows_cols(ctx, ctx.row_count, ctx.col_count)
+    build_object = generate_cubes_with_support(ctx, ctx.row_count, ctx.col_count)
     show_object(build_object, name=ctx.file_name)
 else:
     logging.info(f"Unreconized __name__: {__name__}")
