@@ -25,13 +25,13 @@ def round_to_resolution(value: float, resolution: float) -> float:
     return round(value / resolution) * resolution
 
 
-def generate_cube(ctx: Context, rerf_number: int, cube_number: int, cube_size: float, tube_size: float) ->   cq.Workplane:
+def generate_cube(ctx: Context, rerf_number: int, row_col: int, cube_size: float, tube_size: float) ->   cq.Workplane:
     """
     Generates a 3D cube with text inscriptions on specified faces.
 
     Parameters:
         rerf_number (int): The rerf number to engrave on the <Y face, not printed if <= 0.
-        cube_number (int): The cube number to engrave on the >Y face.
+        row_col (int): The cube number to engrave on the >Y face.
         cube_size (float): The size of the cube to engrave on the >X face.
         tube_size (float): The tube size to engrave on the <X face.
 
@@ -43,28 +43,32 @@ def generate_cube(ctx: Context, rerf_number: int, cube_number: int, cube_size: f
 
     # Prepare formatted text with three significant digits
     rerf_number_text = f"{rerf_number}"
-    cube_number_text = f"{cube_number}"
+    row_col_text = f"{row_col:02d}"
     cube_size_text = f"{cube_size:5.3f}"
     tube_size_text = f"{tube_size:5.3f}"
 
-    htext = round_to_resolution(0.8, default_bed_resolution)
-    dcut = round_to_resolution(0.2, default_bed_resolution)
+    htext = round_to_resolution(0.8, ctx.layer_height)
+    distance = round_to_resolution(0.1, ctx.bed_resolution)
 
-    def make_text(s):
+    def make_text(s, htext):
         def callback(wp):
+            # Protuding text
             wp = wp.workplane(centerOption="CenterOfMass").text(
-                s, htext, -dcut, font="RobotoMono Nerd Font"
-            )
+                s, htext, distance, cut=False, combine='a', font="RobotoMono Nerd Font")
+
+            # Recessed text
+            #wp = wp.workplane(centerOption="CenterOfMass").text(
+            #    s, htext, -distance, combine='cut', font="RobotoMono Nerd Font")
             return wp
 
         return callback
 
     # Chisel text into the respective faces
-    cube = cube.faces(">X").invoke(make_text(cube_size_text))
-    cube = cube.faces("<X").invoke(make_text(tube_size_text))
+    cube = cube.faces(">X").invoke(make_text(cube_size_text, htext))
+    cube = cube.faces("<X").invoke(make_text(tube_size_text, htext))
     if rerf_number > 0:
-        cube = cube.faces("<Y").invoke(make_text(rerf_number_text))
-    cube = cube.faces(">Y").invoke(make_text(cube_number_text))
+        cube = cube.faces(">Y").invoke(make_text(rerf_number_text, htext * 2.0))
+    cube = cube.faces("<Y").invoke(make_text(row_col_text, htext * 2.0))
 
     # Create a hole for the tube on the top face
     cube = cube.faces(">Z").workplane(centerOption="CenterOfMass").hole(tube_size)
@@ -244,22 +248,23 @@ def generate_cubes_with_support(ctx: Context, rerf_number: int, row_count: int, 
     x_step = round_to_resolution((position_box_width - ctx.cube_size) / col_count, ctx.bed_resolution)
     y_step = round_to_resolution((position_box_height - ctx.cube_size) / col_count, ctx.bed_resolution)
     print(f"x_initial: {x_initial:5.3f}, y_initial: {y_initial:5.3f}, x_step: {x_step:5.3f}, y_step: {y_step:5.3f}")
-    for i in range(col_count):
-        x = round_to_resolution(x_initial + (x_step * i), ctx.bed_resolution)
-        for j in range(row_count):
-            y = round_to_resolution(y_initial + (y_step * j), ctx.bed_resolution)
+    for col in range(col_count):
+        x = round_to_resolution(x_initial + (x_step * col), ctx.bed_resolution)
+        for row in range(row_count):
+            y = round_to_resolution(y_initial + (y_step * row), ctx.bed_resolution)
 
-            cube_number = i * 3 + j + 1
+            # Cube number is 2 digits first digit is the row second is the column
+            row_col = (row * 10) + col
 
-            print(f"rerf_number: {rerf_number} cube_number: {cube_number} x: {x:5.3f}, y: {y:5.3f}")
+            print(f"rerf_number: {rerf_number} row_col: {row_col:02d} x: {x:5.3f}, y: {y:5.3f}")
             # Postion so the cube is in the upper left corner of position_box
             support = generate_support(ctx, ctx.cube_size, ctx.base_layers, support_len, support_diameter, support_tip_diameter)
-            cube = generate_cube(ctx, rerf_number, cube_number, ctx.cube_size, ctx.tube_size)
+            cube = generate_cube(ctx, rerf_number, row_col, ctx.cube_size, ctx.tube_size)
             cube = cube.translate((0, 0, support_len))
             cube = cube.add(support)
             cube = cube.translate((x, y, 0))
 
-            if i == 0 and j == 0:
+            if col == 0 and row == 0:
                 build_object = cube
             else:
                 build_object = build_object.add(cube)
@@ -305,11 +310,11 @@ if __name__ == "__main__":
         """
         try:
             ivalue = int(value)
-            if ivalue < 1:
-                raise argparse.ArgumentTypeError(f"{value} is not a valid row/column count (must be >= 1)")
+            if ivalue < 1 or ivalue > 10:
+                raise argparse.ArgumentTypeError(f"{ivalue} is not a valid row/column count (must be >= 1 <= 10)")
             return ivalue
         except ValueError:
-            raise argparse.ArgumentTypeError(f"{value} is not a valid row/column count (must be >= 1)")
+            raise argparse.ArgumentTypeError(f"{ivalue} is not a valid row/column count (must be >= 1 <= 10")
 
     parser = argparse.ArgumentParser(description="Generate 3D cubes with text inscriptions.")
     parser.add_argument("filename", type=str, help="Name of the output file (without extension)")
