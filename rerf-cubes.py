@@ -368,6 +368,14 @@ if __name__ == "__main__":
     logging.debug(f"ctx: {ctx}")
 
     if ctx.rerf:
+        # Currently only the Anycubic Mono 4 printer
+        any_cubic_mono_4 = 0
+        current_printer = any_cubic_mono_4
+        sequential_to_printer_order = [
+            [8, 7, 6, 5, 4, 3, 2, 1] # Anycubic Mono 4 is a simple reversal
+        ]
+
+
         # Were going to generate 2 rows with and 4 columns of
         # build_objects positioning them on the build plate
         rerf_number_rows = 2
@@ -375,12 +383,12 @@ if __name__ == "__main__":
 
         # There will be rerf_number_rows * rerf_number_cols number of rerf objects
         # We'll calculate the length of x and y for each position box and use 90%:
-        bps_x = (ctx.bed_size[0] / rerf_number_cols) * 0.9
-        bps_y = (ctx.bed_size[1] / rerf_number_rows) * 0.9
+        position_box_size_x = (ctx.bed_size[0] / rerf_number_cols) * 0.9
+        position_box_size_y = (ctx.bed_size[1] / rerf_number_rows) * 0.9
 
         # Round the position box size to the nearest multiple of the bed resolution
-        ctx.position_box_size[0] = round_to_resolution(bps_x, ctx.bed_resolution)
-        ctx.position_box_size[1] = round_to_resolution(bps_y, ctx.bed_resolution)
+        ctx.position_box_size[0] = round_to_resolution(position_box_size_x, ctx.bed_resolution)
+        ctx.position_box_size[1] = round_to_resolution(position_box_size_y, ctx.bed_resolution)
 
         # Calculate the step size for the X and Y positions
         rerf_x_step = ctx.bed_size[0] / (rerf_number_cols)
@@ -399,7 +407,15 @@ if __name__ == "__main__":
                 y = round_to_resolution(rerf_y_initial + (rerf_number_row * rerf_y_step), ctx.bed_resolution)
                 ctx.position_box_location[0] = x
                 ctx.position_box_location[1] = y
-                rerf_number = (rerf_number_col * rerf_number_rows) + rerf_number_row + 1
+
+                # Sequential order is print both rows in rerf_number_col and then advance to next column
+                # Logical Layout of our sequential order
+                #   0, 2, 4, 6
+                #   1, 3, 5, 7
+                # This maps to the order needed for the current
+                sequential_order = (rerf_number_col * rerf_number_rows) + rerf_number_row
+                rerf_number = sequential_to_printer_order[current_printer][sequential_order]
+                print(f"sequential_order: {sequential_order} rerf_number: {rerf_number}")
 
                 # Generate the cubes
                 bo = generate_cubes_with_support(ctx, rerf_number, ctx.row_count, ctx.col_count)
