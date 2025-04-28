@@ -7,6 +7,8 @@ import sys
 from context import Context
 from cadquery.vis import show
 
+VERSION = "1.0.0"
+
 logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -316,7 +318,11 @@ if __name__ == "__main__":
         except ValueError:
             raise argparse.ArgumentTypeError(f"{ivalue} is not a valid row/column count (must be >= 1 <= 10")
 
-    parser = argparse.ArgumentParser(description="Generate 3D cubes with text inscriptions.")
+    parser = argparse.ArgumentParser(
+        description=f"rerf-cubes v{VERSION} Generate 3D cubes with text inscriptions.",
+        epilog=f"Version: {VERSION}"
+    )
+    parser.add_argument("-v", "--version", action="version", version=f"%(prog)s v{VERSION}")
     parser.add_argument("filename", type=str, help="Name of the output file (without extension)")
     parser.add_argument("format", type=str, choices=["stl", "step"], help="Format to export the model ('stl' or 'step')")
     parser.add_argument("row_count", type=row_col_checker, help="Number of rows to create (>= 1)")
