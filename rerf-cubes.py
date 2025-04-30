@@ -27,58 +27,98 @@ def round_to_resolution(value: float, resolution: float) -> float:
     return round(value / resolution) * resolution
 
 
-def generate_cube(ctx: Context, rerf_number: int, row_col: int, cube_size: float, tube_size: float) ->   cq.Workplane:
+def generate_shape(ctx: Context, rerf_number: int, row_col: int, cube_size: float, tube_length: float, tube_hole_diameter: float, tube_wall_thickness: float) ->   cq.Workplane:
     """
-    Generates a 3D cube with text inscriptions on specified faces.
+    Generates a shape with text inscriptions on specified faces.
 
     Parameters:
         rerf_number (int): The rerf number to engrave on the <Y face, not printed if <= 0.
         row_col (int): The cube number to engrave on the >Y face.
         cube_size (float): The size of the cube to engrave on the >X face.
-        tube_size (float): The tube size to engrave on the <X face.
+        tube_length (float): The length of the tube between the two cubes.
+        tube_hole_diameter (float): The diameter of the hole in the tube and cube.
+        tube_wall_thickness (float): The wall thickness of the tube.
 
     Returns:
-        CadQuery object representing the final cube.
+        CadQuery object representing the final shape.
     """
-    # Create the base cube centered at (0,0,0)
-    cube = cq.Workplane("XY").box(cube_size, cube_size, cube_size)
+    cube_size_half = round_to_resolution(cube_size / 2, ctx.layer_height)
+
+    # Create the upper cube initially it's CenterOfMass is at origin
+    upper_cube = cq.Workplane("XY").box(cube_size, cube_size, cube_size)
+
+    # Move the upper cube to final position for the top of the tube
+    #   + cube_size_half is the center of the cube so base of the cube is on the XY plane
+    #   + cube_size is the height of the bottom_cube
+    #   + tube_length is the length of the tube
+    upper_cube_zt = round_to_resolution(cube_size_half + cube_size + tube_length, ctx.layer_height)
+    upper_cube = upper_cube.translate((0, 0, upper_cube_zt))
+    #show(upper_cube, title=f"upper_cube: cube_size: {cube_size:5.3f} upper_cube_zt: {upper_cube_zt:5.3f}")
 
     # Prepare formatted text with three significant digits
     rerf_number_text = f"{rerf_number}"
     row_col_text = f"{row_col:02d}"
     cube_size_text = f"{cube_size:5.3f}"
-    tube_size_text = f"{tube_size:5.3f}"
+    tube_hole_diameter_text = f"{tube_hole_diameter:5.3f}"
 
     htext = round_to_resolution(0.8, ctx.layer_height)
     distance = round_to_resolution(0.1, ctx.bed_resolution)
 
     def make_text(s, htext):
         def callback(wp):
-            # Protuding text
-            wp = wp.workplane(centerOption="CenterOfMass").text(
-                s, htext, distance, cut=False, combine='a', font="RobotoMono Nerd Font")
+            ## Protuding text
+            #wp = wp.workplane(centerOption="CenterOfMass").text(
+            #    s, htext, distance, cut=False, combine='a', font="RobotoMono Nerd Font")
 
             # Recessed text
-            #wp = wp.workplane(centerOption="CenterOfMass").text(
-            #    s, htext, -distance, combine='cut', font="RobotoMono Nerd Font")
+            wp = wp.workplane(centerOption="CenterOfMass").text(
+                s, htext, -distance, combine='cut', font="RobotoMono Nerd Font")
             return wp
 
         return callback
 
-    # Chisel text into the respective faces
-    cube = cube.faces(">X").invoke(make_text(cube_size_text, htext))
-    cube = cube.faces("<X").invoke(make_text(tube_size_text, htext))
+    # Add text into the respective faces
+    upper_cube = upper_cube.faces(">X").invoke(make_text(cube_size_text, htext))
+    upper_cube = upper_cube.faces("<X").invoke(make_text(tube_hole_diameter_text, htext))
     if rerf_number > 0:
-        cube = cube.faces(">Y").invoke(make_text(rerf_number_text, htext * 2.0))
-    cube = cube.faces("<Y").invoke(make_text(row_col_text, htext * 2.0))
+        upper_cube = upper_cube.faces(">Y").invoke(make_text(rerf_number_text, htext * 2.0))
+    upper_cube = upper_cube.faces("<Y").invoke(make_text(row_col_text, htext * 2.0))
+    #show(upper_cube, title=f"upper_cube: with_text cube_size: {cube_size:5.3f} upper_cube_zt: {upper_cube_zt:5.3f}")
 
-    # Create a hole for the tube on the top face
-    cube = cube.faces(">Z").workplane(centerOption="CenterOfMass").hole(tube_size)
+    # Create the base cube centered at (0,0,0) on the XY plane
+    base_cube = cq.Workplane("XY").box(cube_size, cube_size, cube_size)
 
-    # Shift the cube so its bottom face is on the XY plane at Z=0
-    cube = cube.translate((0, 0, cube_size / 2))
+    # Move the base cube to final position for the bottom of the tube is on the XY plane
+    base_cube_zt = round_to_resolution(cube_size_half, ctx.layer_height)
+    base_cube = base_cube.translate((0, 0, base_cube_zt))
+    #show(base_cube, title=f"base_cube: cube_size: {cube_size:5.3f} upper_cube_zt: {upper_cube_zt:5.3f}")
 
-    return cube
+    # Create the tube between the two cubes with half of the overlap in the base and upper cubes
+    overlap = round_to_resolution((0.10 * tube_length), ctx.layer_height)
+    tube_full_length = round_to_resolution(tube_length + overlap, ctx.layer_height)
+    tube_radius = round_to_resolution((tube_hole_diameter + (tube_wall_thickness * 2)) / 2, ctx.bed_resolution)
+
+    # Base of tup is on the XY plane
+    tube = cq.Workplane("XY").circle(tube_radius).extrude(tube_full_length)
+
+    # Move the tube from the XY plane to the top of the base cube
+    # but with half of the overlap into the base cube
+    tube_zt = round_to_resolution(cube_size - (overlap / 2), ctx.layer_height)
+    tube = tube.translate((0, 0, tube_zt))
+    #show(tube, title=f"tube overlap: {overlap:5.3f}, tube_full_length: {tube_full_length:5.3f}, tube_radius: {tube_radius:5.3f}")
+
+    # Union the upper cube and the tube and the base cube
+    shape = base_cube.union(tube).union(upper_cube)
+    #show(shape, title="shape")
+
+    # Create a hole through the shape
+    shape = shape.faces(">Z").workplane(centerOption="CenterOfMass").hole(tube_hole_diameter)
+    #show(shape, title="shape with hole")
+
+    ## Shift the cube so its bottom face is on the XY plane at Z=0
+    #shape = shape.translate((0, 0, cube_size / 2))
+
+    return shape
 
 def support_pillar(ctx: Context, support_len: float, support_diameter: float, support_tip_diameter: float):
     """
@@ -215,13 +255,13 @@ def export_model(ctx: Context, model: cq.Workplane, file_name: str, file_format)
     else:
         print("Unsupported format. Use 'stl' or 'step'.", file=sys.sdterr)
 
-def generate_cubes_with_support(ctx: Context, rerf_number: int, row_count: int, col_count: int) -> cq.Workplane:
+def generate_shape_with_support(ctx: Context, rerf_number: int, row_count: int, col_count: int) -> cq.Workplane:
     """
-    Generates a one or more 3D cubes and support as specified by row_count and col_count.
+    Generates a one or shapes with support as specified by row_count and col_count.
 
-    Each cube is placed in a grid pattern within the specified position box.
-    The cubes are positioned so that they are centered within the position box.
-    The cubes are also supported by a support structure.
+    Each shape is placed in a grid pattern within the specified position box.
+    The shapes are positioned so that they are centered within the position box.
+    The shapes are also supported by a support structure.
     The function returns the final 3D object.
 
     Parameters:
@@ -257,19 +297,19 @@ def generate_cubes_with_support(ctx: Context, rerf_number: int, row_count: int, 
 
             # Cube number is 2 digits first digit is the row second is the column
             row_col = (row * 10) + col
-
             print(f"rerf_number: {rerf_number} row_col: {row_col:02d} x: {x:5.3f}, y: {y:5.3f}")
+
             # Postion so the cube is in the upper left corner of position_box
             support = generate_support(ctx, ctx.cube_size, ctx.base_layers, support_len, support_diameter, support_tip_diameter)
-            cube = generate_cube(ctx, rerf_number, row_col, ctx.cube_size, ctx.tube_hole_diameter)
-            cube = cube.translate((0, 0, support_len))
-            cube = cube.add(support)
-            cube = cube.translate((x, y, 0))
+            shape = generate_shape(ctx, rerf_number, row_col, ctx.cube_size, ctx.tube_length, ctx.tube_hole_diameter, ctx.tube_wall_thickness)
+            shape = shape.translate((0, 0, support_len))
+            shape = shape.add(support)
+            shape = shape.translate((x, y, 0))
 
             if col == 0 and row == 0:
-                build_object = cube
+                build_object = shape
             else:
-                build_object = build_object.add(cube)
+                build_object = build_object.add(shape)
 
     # Translate the build object to the specified position if not at (0,0)
     if ctx.position_box_location[0] > 0.0 and ctx.position_box_location[1] > 0.0:
@@ -292,7 +332,7 @@ default_layer_height = 0.050
 default_bed_resolution = 0.017
 default_bed_size = (9024 * default_bed_resolution, 5120 * default_bed_resolution)
 default_cube_size = round_to_resolution(2.4, default_bed_resolution) # Make multiple of bed_resolution
-default_tube_length= round_to_resolution(25.4, default_layer_height) # Make multiple of layer_height
+default_tube_length= round_to_resolution(12.25, default_layer_height) # Make multiple of layer_height
 default_tube_hole_diameter = round_to_resolution(0.646, default_bed_resolution) # Make multiple of bed_resolution
 default_tube_wall_thickness = round_to_resolution(0.1, default_bed_resolution) # Make multiple of bed_resolution
 default_support_len = 5.0
@@ -330,9 +370,9 @@ if __name__ == "__main__":
     parser.add_argument("row_count", type=row_col_checker, help="Number of rows to create (>= 1)")
     parser.add_argument("col_count", type=row_col_checker, help="Number of columns to create (>= 1)")
     parser.add_argument("-cs", "--cube_size", type=float, default=default_cube_size, help=f"Cube size engraved on the +X face, defaults to {default_cube_size:5.3f}")
-    parser.add_argument("-tl", "--tube_length", type=float, default=default_tube_hole_diameter, help=f"Tube length defaults to {default_tube_length:5.3f}")
+    parser.add_argument("-tl", "--tube_length", type=float, default=default_tube_length, help=f"Tube length defaults to {default_tube_length:5.3f}")
     parser.add_argument("-thd", "--tube_hole_diameter", type=float, default=default_tube_hole_diameter, help=f"Tube hole diameter engraved on the -X face, defaults to {default_tube_hole_diameter:5.3f}")
-    parser.add_argument("-twt", "--tube_wall_thickness", type=float, default=default_tube_hole_diameter, help=f"Tube wall thi9ckness, defaults to {default_tube_wall_thickness:5.3f}")
+    parser.add_argument("-twt", "--tube_wall_thickness", type=float, default=default_tube_wall_thickness, help=f"Tube wall thi9ckness, defaults to {default_tube_wall_thickness:5.3f}")
     parser.add_argument("-br", "--bed_resolution", type=float, default=default_bed_resolution, help=f"resolution of the printer bed, defaults to {default_bed_resolution}")
     parser.add_argument("-bs", "--bed_size", type=float, default=default_bed_size, help=f"size of the bed, defaults to ({default_bed_size[0]:5.3f}, {default_bed_size[1]:5.3f})")
     parser.add_argument("-lh", "--layer_height", type=float, default=default_layer_height, help=f"Layer height for this print, defaults to {default_layer_height:5.3f}")
@@ -431,7 +471,7 @@ if __name__ == "__main__":
                 print(f"sequential_order: {sequential_order} rerf_number: {rerf_number}")
 
                 # Generate the cubes
-                bo = generate_cubes_with_support(ctx, rerf_number, ctx.row_count, ctx.col_count)
+                bo = generate_shape_with_support(ctx, rerf_number, ctx.row_count, ctx.col_count)
 
                 # Group them into a single object
                 if rerf_number_col == 0 and rerf_number_row == 0:
@@ -441,7 +481,7 @@ if __name__ == "__main__":
     else:
         # Generate a 3D object using the specified number of rows and columns
         # and export it to the specified file format
-        build_object = generate_cubes_with_support(ctx, 0, ctx.row_count, ctx.col_count)
+        build_object = generate_shape_with_support(ctx, 0, ctx.row_count, ctx.col_count)
 
     if ctx.rerf:
         # Initialize the file name for the rerf object
@@ -481,7 +521,7 @@ elif __name__ == "__cq_main__":
 
     # Generate the 3D object using the specified number of rows and columns
     # and use the cadquery show_object function to display it
-    build_object = generate_cubes_with_support(ctx, ctx.row_count, ctx.col_count)
+    build_object = generate_shape_with_support(ctx, ctx.row_count, ctx.col_count)
     show_object(build_object, name=ctx.file_name)
 else:
     logging.info(f"Unreconized __name__: {__name__}")
