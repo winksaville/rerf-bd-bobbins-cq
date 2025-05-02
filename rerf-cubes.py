@@ -345,7 +345,7 @@ default_bed_resolution = 0.017
 default_bed_size = (9024 * default_bed_resolution, 5120 * default_bed_resolution)
 default_cube_size = round_to_resolution(2.4, default_bed_resolution) # Make multiple of bed_resolution
 default_tube_length= round_to_resolution(3 * 2.4, default_layer_height) # Make multiple of layer_height
-default_tube_hole_diameter = round_to_resolution(0.646, default_bed_resolution) # Make multiple of bed_resolution
+default_tube_hole_diameter = round_to_resolution(0.714, default_bed_resolution) # Make multiple of bed_resolution
 default_tube_wall_thickness = round_to_resolution(0.2, default_bed_resolution) # Make multiple of bed_resolution
 default_support_len = 5.0
 default_base_layers = 10 # Change to mm and then calculate the number of layers
@@ -384,7 +384,7 @@ if __name__ == "__main__":
     parser.add_argument("-cs", "--cube_size", type=float, default=default_cube_size, help=f"Cube size engraved on the +X face, defaults to {default_cube_size:5.3f}")
     parser.add_argument("-tl", "--tube_length", type=float, default=default_tube_length, help=f"Tube length defaults to {default_tube_length:5.3f}")
     parser.add_argument("-thd", "--tube_hole_diameter", type=float, default=default_tube_hole_diameter, help=f"Tube hole diameter engraved on the -X face, defaults to {default_tube_hole_diameter:5.3f}")
-    parser.add_argument("-twt", "--tube_wall_thickness", type=float, default=default_tube_wall_thickness, help=f"Tube wall thi9ckness, defaults to {default_tube_wall_thickness:5.3f}")
+    parser.add_argument("-twt", "--tube_wall_thickness", type=float, default=default_tube_wall_thickness, help=f"Tube wall thickness, defaults to {default_tube_wall_thickness:5.3f}")
     parser.add_argument("-br", "--bed_resolution", type=float, default=default_bed_resolution, help=f"resolution of the printer bed, defaults to {default_bed_resolution}")
     parser.add_argument("-bs", "--bed_size", type=float, default=default_bed_size, help=f"size of the bed, defaults to ({default_bed_size[0]:5.3f}, {default_bed_size[1]:5.3f})")
     parser.add_argument("-lh", "--layer_height", type=float, default=default_layer_height, help=f"Layer height for this print, defaults to {default_layer_height:5.3f}")
