@@ -184,6 +184,7 @@ def gnerate_square_support_base(ctx: Context, base_size: float, base_layers: flo
 
 def generate_support(
         ctx: Context,
+        cube_size: float,
         base_size: float,
         base_layers: float,
         support_len: float,
@@ -193,6 +194,8 @@ def generate_support(
     Generates a support structure for the cube.
 
     Parameters:
+        ctx (Context): The context object containing parameters for the model.
+        cube_size (float): The size of the cube.
         base_size (float): The size of the base.
         base_layers (float): The number of layers for the base.
         support_len (float): The length of the support structure.
@@ -218,7 +221,7 @@ def generate_support(
     # the cube and the base.
     support_pillar_len = (support_len - base_height) + support_len_fudge
     support_radius = support_base_diameter / 2
-    support_loc_offset = (base_size / 2) - support_radius
+    support_loc_offset = (cube_size / 2) - support_radius
 
     support1 = support_pillar(ctx, support_pillar_len, support_base_diameter, support_tip_diameter).clean()
     support1 = support1.translate((-support_loc_offset, -support_loc_offset, support_z))
@@ -300,7 +303,7 @@ def generate_shape_with_support(ctx: Context, rerf_number: int, row_count: int, 
             print(f"rerf_number: {rerf_number} row_col: {row_col:02d} x: {x:5.3f}, y: {y:5.3f}")
 
             # Postion so the cube is in the upper left corner of position_box
-            support = generate_support(ctx, ctx.cube_size, ctx.base_layers, support_len, support_diameter, support_tip_diameter)
+            support = generate_support(ctx, ctx.cube_size, ctx.cube_size * 2, ctx.base_layers, support_len, support_diameter, support_tip_diameter)
             shape = generate_shape(ctx, rerf_number, row_col, ctx.cube_size, ctx.tube_length, ctx.tube_hole_diameter, ctx.tube_wall_thickness)
             shape = shape.translate((0, 0, support_len))
             shape = shape.add(support)
@@ -332,9 +335,9 @@ default_layer_height = 0.050
 default_bed_resolution = 0.017
 default_bed_size = (9024 * default_bed_resolution, 5120 * default_bed_resolution)
 default_cube_size = round_to_resolution(2.4, default_bed_resolution) # Make multiple of bed_resolution
-default_tube_length= round_to_resolution(12.25, default_layer_height) # Make multiple of layer_height
+default_tube_length= round_to_resolution(3 * 2.4, default_layer_height) # Make multiple of layer_height
 default_tube_hole_diameter = round_to_resolution(0.646, default_bed_resolution) # Make multiple of bed_resolution
-default_tube_wall_thickness = round_to_resolution(0.1, default_bed_resolution) # Make multiple of bed_resolution
+default_tube_wall_thickness = round_to_resolution(0.2, default_bed_resolution) # Make multiple of bed_resolution
 default_support_len = 5.0
 default_base_layers = 10 # Change to mm and then calculate the number of layers
 default_position_box_width = round_to_resolution(5000 * default_bed_resolution, default_bed_resolution)
