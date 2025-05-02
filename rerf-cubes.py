@@ -322,12 +322,21 @@ def generate_shape_with_support(ctx: Context, rerf_number: int, row_count: int, 
     # Create the file_name if this isn't an rerf build and there is a file name
     size_in_mm = ctx.position_box_size[0], ctx.position_box_size[1]
     location_in_mm = [(ctx.position_box_location[0]), (ctx.position_box_location[1])]
-    if ctx.rerf == False and ctx.file_name != "":
-        if (location_in_mm[0] > 0.0) or (location_in_mm[1] > 0.0):
-            pos_in_mm_str = f"_pos-{location_in_mm[0]:5.3f}-{location_in_mm[1]:5.3f}"
+    if ctx.file_name != "":
+        # We are going to export the object shape a file
+        if ctx.rerf:
+            if ctx.file_name.__contains__("_rerf_rc-") == False:
+                # Update the file name for the rerf build only once
+                ctx.file_name = f"{ctx.file_name}_rerf_rc-{ctx.row_count}_cc-{ctx.col_count}_lh-{ctx.layer_height:5.3f}"
         else:
-            pos_in_mm_str = ""
-        ctx.file_name = f"{ctx.file_name}_sz-{ctx.cube_size:5.3f}_ts-{ctx.tube_hole_diameter:5.3}_rc-{ctx.row_count}_cc-{ctx.col_count}_lh-{ctx.layer_height}_box-{size_in_mm[0]:5.3f}x{size_in_mm[1]:5.3f}{pos_in_mm_str}"
+            # If location is not (0,0) add it to the file name
+            if (location_in_mm[0] > 0.0) or (location_in_mm[1] > 0.0):
+                pos_in_mm_str = f"_pos-{location_in_mm[0]:5.3f}-{location_in_mm[1]:5.3f}"
+            else:
+                pos_in_mm_str = ""
+
+            # Initialize the file name for the object
+            ctx.file_name = f"{ctx.file_name}_cz-{ctx.cube_size:5.3f}_tl-{ctx.tube_length:5.3f}_thd-{ctx.tube_hole_diameter:5.3f}_twt-{ctx.tube_wall_thickness:5.3f}_rc-{ctx.row_count}_cc-{ctx.col_count}_lh-{ctx.layer_height:5.3f}_box-{size_in_mm[0]:5.3f}x{size_in_mm[1]:5.3f}{pos_in_mm_str}"
 
     return build_object
 
@@ -485,10 +494,6 @@ if __name__ == "__main__":
         # Generate a 3D object using the specified number of rows and columns
         # and export it to the specified file format
         build_object = generate_shape_with_support(ctx, 0, ctx.row_count, ctx.col_count)
-
-    if ctx.rerf:
-        # Initialize the file name for the rerf object
-        ctx.file_name = f"{ctx.file_name}_rerf-{ctx.rerf}_rc-{ctx.row_count}_cc-{ctx.col_count}_lh-{ctx.layer_height}"
 
     # Export the file if a file name is provided
     if ctx.file_name != "":
