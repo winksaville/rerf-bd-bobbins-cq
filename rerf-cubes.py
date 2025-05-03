@@ -98,7 +98,7 @@ def generate_shape(ctx: Context, rerf_number: int, row_col: int, cube_size: floa
     tube_full_length = round_to_resolution(tube_length + overlap, ctx.layer_height)
     tube_radius = round_to_resolution((tube_hole_diameter + (tube_wall_thickness * 2)) / 2, ctx.bed_resolution)
 
-    # Base of tup is on the XY plane
+    # Base of tube is on the XY plane
     tube = cq.Workplane("XY").circle(tube_radius).extrude(tube_full_length)
 
     # Move the tube from the XY plane to the top of the base cube
@@ -120,7 +120,7 @@ def generate_shape(ctx: Context, rerf_number: int, row_col: int, cube_size: floa
 
     return shape
 
-def support_pillar(ctx: Context, support_len: float, support_diameter: float, support_tip_diameter: float):
+def support_pillar_base_cube(ctx: Context, support_len: float, support_diameter: float, support_tip_diameter: float):
     """
     Creates a support pillar with a base and a tip.
 
@@ -149,7 +149,7 @@ def support_pillar(ctx: Context, support_len: float, support_diameter: float, su
 
     return base.union(tip)
 
-def gnerate_square_support_base(ctx: Context, base_size: float, base_layers: float, layer_height: float):
+def generate_square_support_base(ctx: Context, base_size: float, base_height: float) -> cq.Workplane:
     """
     Generates a square support base with tappered edges
     so it's easier to pry off the build plate.
@@ -165,12 +165,11 @@ def gnerate_square_support_base(ctx: Context, base_size: float, base_layers: flo
         CadQuery object representing the square base.
     """
     # Calculate the base height and the top is full sized
-    base_height = base_layers * layer_height
     top_size = base_size
 
     # The bottom is smaller than the top and will have a 45 degree slope
     # so it's easier to pry off the build plate
-    bottom_size = top_size - ((base_layers * layer_height) * 2)
+    bottom_size = top_size - (base_height * 2)
 
     # Create the base and top squares
     bottom = cq.Workplane("XY").rect(bottom_size, bottom_size).workplane(offset=base_height)
@@ -182,11 +181,11 @@ def gnerate_square_support_base(ctx: Context, base_size: float, base_layers: flo
     return base.clean()
 
 
-def generate_support(
+def generate_base_cube_supports(
         ctx: Context,
         cube_size: float,
         base_size: float,
-        base_layers: float,
+        base_height: float,
         support_len: float,
         support_base_diameter: float,
         support_tip_diameter: float):
@@ -207,8 +206,7 @@ def generate_support(
     """
 
     # Create a cube for the base laying on the xy plane
-    base_height = base_layers * ctx.layer_height
-    base = gnerate_square_support_base(ctx, base_size, base_layers, ctx.layer_height)
+    base = generate_square_support_base(ctx, base_size, base_height)
 
     # Add lenth to the support to guarantee here is overlap with cube and base
     support_len_fudge = 4 * ctx.layer_height
@@ -223,17 +221,47 @@ def generate_support(
     support_radius = support_base_diameter / 2
     support_loc_offset = (cube_size / 2) - support_radius
 
-    support1 = support_pillar(ctx, support_pillar_len, support_base_diameter, support_tip_diameter).clean()
+    support1 = support_pillar_base_cube(ctx, support_pillar_len, support_base_diameter, support_tip_diameter).clean()
     support1 = support1.translate((-support_loc_offset, -support_loc_offset, support_z))
-    support2 = support_pillar(ctx, support_pillar_len, support_base_diameter, support_tip_diameter).clean()
+    support2 = support_pillar_base_cube(ctx, support_pillar_len, support_base_diameter, support_tip_diameter).clean()
     support2 = support2.translate((support_loc_offset, -support_loc_offset, support_z))
-    support3 = support_pillar(ctx, support_pillar_len, support_base_diameter, support_tip_diameter).clean()
+    support3 = support_pillar_base_cube(ctx, support_pillar_len, support_base_diameter, support_tip_diameter).clean()
     support3 = support3.translate((0, support_loc_offset, support_z))
     
     # Union the base and support
     build_object = base.add(support1).add(support2).add(support3).clean()
 
     return build_object
+
+def generate_upper_cube_supports(ctx: Context, zloc_base_upper_cube: float, support_diameter: float, support_tip_diameter: float):
+    """
+    Creates a support pillar for upper cube with a base and a tip.
+
+    Created with the help of ChatGPT:
+        https://chatgpt.com/share/67f8446f-77b4-800c-ba3c-30de5b676896
+
+    Parameters:
+        support_len (float): The length of the support pillar.
+        support_diameter (float): The diameter of the base of the support.
+        support_tip_diameter (float): The diameter of the tip of the support.
+    Returns:
+        CadQuery object representing the support pillar.
+    """
+
+    base_len = support_len / 2
+    tip_len = support_len / 2
+
+    # Base: create a cylinder for the base
+    base = cq.Workplane("XY").circle(support_diameter / 2).extrude(base_len)
+
+    # Cone: create using makeCone and move it into place
+    tip = cq.Solid.makeCone(
+        support_diameter / 2,
+        support_tip_diameter / 2,
+        tip_len,
+    ).translate(cq.Vector(0, 0, base_len))
+
+    return base.union(tip)
 
 
 def export_model(ctx: Context, model: cq.Workplane, file_name: str, file_format) -> None:
@@ -275,7 +303,7 @@ def generate_shape_with_support(ctx: Context, rerf_number: int, row_count: int, 
     Returns:
         cq.Workplane: The final 3D object representing the cubes and support structures.
     """
-    support_len = ctx.support_len
+    support_len_base_cube = ctx.support_len
     support_diameter = round_to_resolution(0.75, ctx.bed_resolution)
     support_tip_diameter = round_to_resolution(0.3, ctx.bed_resolution)
 
@@ -302,11 +330,22 @@ def generate_shape_with_support(ctx: Context, rerf_number: int, row_count: int, 
             row_col = (row * 10) + col
             print(f"rerf_number: {rerf_number} row_col: {row_col:02d} x: {x:5.3f}, y: {y:5.3f}")
 
-            # Postion so the cube is in the upper left corner of position_box
-            support = generate_support(ctx, ctx.cube_size, ctx.cube_size * 2, ctx.base_layers, support_len, support_diameter, support_tip_diameter)
+            # Generate the shape
             shape = generate_shape(ctx, rerf_number, row_col, ctx.cube_size, ctx.tube_length, ctx.tube_hole_diameter, ctx.tube_wall_thickness)
-            shape = shape.translate((0, 0, support_len))
-            shape = shape.add(support)
+            shape = shape.translate((0, 0, support_len_base_cube))
+
+            # Create the base cube support structure
+            base_height = ctx.base_layers * ctx.layer_height
+            base_cube_supports = generate_base_cube_supports(ctx, ctx.cube_size, ctx.cube_size * 2, base_height, support_len_base_cube, support_diameter, support_tip_diameter)
+            shape = shape.add(base_cube_supports)
+
+            # Create the upper cube support structure
+            zloc_bottom_upper_cube = round_to_resolution(base_height + support_len_base_cube + ctx.cube_size, ctx.layer_height)
+            print(f"zloc_bottom_upper_cube: {zloc_bottom_upper_cube:5.3f}")
+            #upper_cube_supports = generate_upper_cube_supports(ctx, ctx.cube_size, zloc_bottom_upper_cube, support_diameter, support_tip_diameter)
+            #shape = shape.add(upper_cube_supports)
+
+            # Move theshape to the specified position on XY plane (i.e. z=0)
             shape = shape.translate((x, y, 0))
 
             if col == 0 and row == 0:
