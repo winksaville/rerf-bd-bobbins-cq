@@ -260,7 +260,7 @@ def export_model(ctx: Context, model: cq.Workplane, file_name: str, file_format)
 
 def generate_shape_with_support(ctx: Context, rerf_number: int, row_count: int, col_count: int) -> cq.Workplane:
     """
-    Generates a one or shapes with support as specified by row_count and col_count.
+    Generates a one or more shapes with support as specified by row_count and col_count.
 
     Each shape is placed in a grid pattern within the specified position box.
     The shapes are positioned so that they are centered within the position box.
