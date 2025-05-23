@@ -1,6 +1,6 @@
-name: cq
+name: rerf-cubes-cq
 channels:
   - conda-forge
 dependencies:
-  - python
+  - python =3.12
   - cadquery

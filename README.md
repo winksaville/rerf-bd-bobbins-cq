@@ -14,38 +14,135 @@ adding supports manually won't be practical.
 
 ## Requirements
 
-- Python 3.12+ (Anaconda or Miniconda recommended)
-- Mamba (Installed via conda)
+- Python 3.12
+- Micromamba or Mamba, Conda ..
 
 ## Setup
 
-### 1. Install Miniconda or Anaconda (if not already installed)
+### Install Micromamba
+
+On 3900x I'm currently using micromamba, which is a static linked version of mamba/conda
+and is smaller.
+
+Installed via aur: https://aur.archlinux.org/packages/micromamba-bin
+
+```
+git clone https://aur.archlinux.org/micromamba-bin.git
+cd micromamba-bin/
+makepkg -sir
+```
+
+Verify micromamba is installed:
+
+```
+micromamba --version
+```
+
+Clone this repository and then `cd rerf-cubes-cq/` create the environment:
+
+```
+wink@3900x 25-05-23T17:13:48.108Z:~/data/prgs/3dprinting/rerf-cubes-cq (wip-add-generate_upper_cube_supports)
+$ micromamba create -f environment.yml 
+warning  libmamba 'repo.anaconda.com', a commercial channel hosted by Anaconda.com, is used.
+    
+warning  libmamba Please make sure you understand Anaconda Terms of Services.
+    
+warning  libmamba See: https://legal.anaconda.com/policies/en/
+pkgs/main/noarch                                   748.1kB @   1.4MB/s  0.0s
+pkgs/r/linux-64                                      1.6MB @  16.2MB/s  0.1s
+pkgs/r/noarch                                        2.0MB @  38.8MB/s  0.1s
+pkgs/main/linux-64                                   7.6MB @  16.3MB/s  0.4s
+conda-forge/noarch                                  20.5MB @  29.1MB/s  0.6s
+conda-forge/linux-64                                44.1MB @  52.0MB/s  0.8s
+
+
+Transaction
+
+  Prefix: /home/wink/.local/share/mamba/envs/rerf-cubes-cq
+
+  Updating specs:
+
+   - python=3.12
+   - cadquery
+
+
+  Package                                            Version  Build                  Channel          Size
+────────────────────────────────────────────────────────────────────────────────────────────────────────────
+  Install:
+────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+  + _libgcc_mutex                                        0.1  conda_forge            conda-forge       3kB
+  + _openmp_mutex                                        4.5  2_gnu                  conda-forge      24kB
+  + _x86_64-microarch-level                                3  2_x86_64_v3            conda-forge       8kB
+
+  ..
+
+  + yarl                                              1.20.0  py312h178313f_0        conda-forge     156kB
+  + zlib                                               1.3.1  hb9d3cd8_2             conda-forge      92kB
+  + zstd                                               1.5.7  hb8e6e7a_2             conda-forge     568kB
+
+  Summary:
+
+  Install: 270 packages
+
+  Total download: 454MB
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+
+Confirm changes: [Y/n] 
+
+Transaction starting
+ocp                                                 34.0MB @  29.0MB/s  1.1s
+python                                              32.3MB @  20.3MB/s  1.5s
+vtk-base                                            41.9MB @  22.7MB/s  1.7s
+
+..
+
+fonts-conda-forge                                    4.1kB @  ??.?MB/s  0.0s
+_libgcc_mutex                                        2.6kB @  ??.?MB/s  0.0s
+fonts-conda-ecosystem                                3.7kB @  ??.?MB/s  0.1s
+Linking python_abi-3.12-7_cp312
+Linking _x86_64-microarch-level-3-2_x86_64_v3
+
+..
+
+Linking occt-7.7.2-all_h4c9f3c6_201
+Linking ocp-7.7.2.1-py312h4aa6242_0
+Linking cadquery-2.5.2-pyhd8ed1ab_1
+
+Transaction finished
+
+
+To activate this environment, use:
+
+    micromamba activate rerf-cubes-cq
+
+Or to execute a single command in this environment, use:
+
+    micromamba run -n rerf-cubes-cq mycommand
+
+wink@3900x 25-05-23T17:15:14.843Z:~/data/prgs/3dprinting/rerf-cubes-cq (wip-add-generate_upper_cube_supports)
+```
+
+Activate rerf-cubes-cq environment:
+
+```
+wink@3900x 25-05-23T17:15:14.843Z:~/data/prgs/3dprinting/rerf-cubes-cq (wip-add-generate_upper_cube_supports)
+$ micromamba activate rerf-cubes-cq
+(rerf-cubes-cq) wink@3900x 25-05-23T17:15:27.711Z:~/data/prgs/3dprinting/rerf-cubes-cq (wip-add-generate_upper_cube_supports)
+```
+
+Verify rerf-cubes.py runs
+```
+$ ./rerf-cubes.py -v
+rerf-cubes.py v1.0.0
+```
+
+### Other Options
 
 - **Miniconda (Recommended):** [https://docs.conda.io/en/latest/miniconda.html](https://docs.conda.io/en/latest/miniconda.html)
 - **Anaconda:** [https://www.anaconda.com/products/distribution](https://www.anaconda.com/products/distribution)
-
-### 2. Install `mamba`
-
-If you already have `conda` installed, you can install `mamba` with:
-
-```sh
-conda install -c conda-forge mamba
-```
-
-### 3. Clone this repository
-
-```sh
-git clone https://github.com/winksaville/rerf-cubes-cq.git
-cd rerf-cubes-cq
-```
-
-### 4. Setup the environment
-
-```sh
-make setup
-```
-
-This will create a `cq` environment with Python 3.12+ and CadQuery installed. Run this only once unless you delete the environment.
 
 ## Usage
 
@@ -54,19 +151,19 @@ This will create a `cq` environment with Python 3.12+ and CadQuery installed. Ru
 Activate the environment using:
 
 ```sh
-conda activate cq
+micromamba activate rerf-cubes-cq
 ```
 
 ### Help
 
 To see the help message for the script, run:
-```sh
+```
 $ ./rerf-cubes.py -h
-usage: rerf-cubes.py [-h] [-cs CUBE_SIZE] [-ts TUBE_SIZE] [-br BED_RESOLUTION] [-bs BED_SIZE] [-lh LAYER_HEIGHT] [-sl SUPPORT_LEN] [-bl BASE_LAYERS]
-                     [-pbsp width height] [-pbl x y] [-re | --rerf | --no-rerf] [-s | --show | --no-show]
+usage: rerf-cubes.py [-h] [-v] [-cs CUBE_SIZE] [-tl TUBE_LENGTH] [-thd TUBE_HOLE_DIAMETER] [-twt TUBE_WALL_THICKNESS] [-br BED_RESOLUTION] [-bs BED_SIZE] [-lh LAYER_HEIGHT] [-sl SUPPORT_LEN]
+                     [-bl BASE_LAYERS] [-pbsp width height] [-pbl x y] [-re | --rerf | --no-rerf] [-s | --show | --no-show]
                      filename {stl,step} row_count col_count
 
-Generate 3D cubes with text inscriptions.
+rerf-cubes v1.0.0 Generate 3D cubes with text inscriptions.
 
 positional arguments:
   filename              Name of the output file (without extension)
@@ -76,10 +173,15 @@ positional arguments:
 
 options:
   -h, --help            show this help message and exit
+  -v, --version         show program's version number and exit
   -cs CUBE_SIZE, --cube_size CUBE_SIZE
-                        Cube size engraved on the +X face, defaults to 2.414
-  -ts TUBE_SIZE, --tube_size TUBE_SIZE
-                        Tube size engraved on the -X face, defaults to 0.646
+                        Cube size engraved on the +X face, defaults to 2.397
+  -tl TUBE_LENGTH, --tube_length TUBE_LENGTH
+                        Tube length defaults to 7.200
+  -thd TUBE_HOLE_DIAMETER, --tube_hole_diameter TUBE_HOLE_DIAMETER
+                        Tube hole diameter engraved on the -X face, defaults to 0.714
+  -twt TUBE_WALL_THICKNESS, --tube_wall_thickness TUBE_WALL_THICKNESS
+                        Tube wall thickness, defaults to 0.204
   -br BED_RESOLUTION, --bed_resolution BED_RESOLUTION
                         resolution of the printer bed, defaults to 0.017
   -bs BED_SIZE, --bed_size BED_SIZE
@@ -98,6 +200,8 @@ options:
                         If true generate 8 objects in R_E_R_F orientation, defaults to False
   -s, --show, --no-show
                         Show the created object in the viewer
+
+Version: 1.0.0
 ```
 
 
@@ -112,7 +216,7 @@ Ensure the environment is activated, see [Activating the Environment](#activatin
 Example:
 
 ```sh
-./rerf-cubes.py cube2 stl 1
+./rerf-cubes.py cube2 stl 1 1
 ```
 
 ### Cleaning Up
