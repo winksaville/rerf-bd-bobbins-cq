@@ -15,9 +15,10 @@ class Context:
     tube_wall_thickness: float
     bed_resolution: float # TODO change to tuple[float, float] for x, y
     bed_size: tuple[float, float] # multiple of bed_resolution
+    zlift_height: float # Height from bed to bottom of the cube base
     layer_height: float
-    support_len: float
     base_layers: int
+    overlap: float # The distance that one object is buried into the other object
     position_box_size: tuple[float, float]
     position_box_location: tuple[float, float]
     rerf: bool

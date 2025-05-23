@@ -32,6 +32,7 @@ def generate_shape(ctx: Context, rerf_number: int, row_col: int, cube_size: floa
     Generates a shape with text inscriptions on specified faces.
 
     Parameters:
+        ctx (Context): The context object containing overall parameters for the model.
         rerf_number (int): The rerf number to engrave on the <Y face, not printed if <= 0.
         row_col (int): The cube number to engrave on the >Y face.
         cube_size (float): The size of the cube to engrave on the >X face.
@@ -42,18 +43,14 @@ def generate_shape(ctx: Context, rerf_number: int, row_col: int, cube_size: floa
     Returns:
         CadQuery object representing the final shape.
     """
-    cube_size_half = round_to_resolution(cube_size / 2, ctx.layer_height)
 
-    # Create the upper cube initially it's CenterOfMass is at origin
-    upper_cube = cq.Workplane("XY").box(cube_size, cube_size, cube_size)
+    # Create the upper cube centered with base on the XY plane
+    upper_cube = cq.Workplane("XY").box(cube_size, cube_size, cube_size, centered=(True, True, False))
 
-    # Move the upper cube to final position for the top of the tube
-    #   + cube_size_half is the center of the cube so base of the cube is on the XY plane
-    #   + cube_size is the height of the bottom_cube
-    #   + tube_length is the length of the tube
-    upper_cube_zt = round_to_resolution(cube_size_half + cube_size + tube_length, ctx.layer_height)
-    upper_cube = upper_cube.translate((0, 0, upper_cube_zt))
-    #show(upper_cube, title=f"upper_cube: cube_size: {cube_size:5.3f} upper_cube_zt: {upper_cube_zt:5.3f}")
+    # Move the upper cube to its final position relative to the base cube
+    upper_cube_z = round_to_resolution(cube_size + tube_length, ctx.layer_height)
+    upper_cube = upper_cube.translate((0, 0, upper_cube_z))
+    #show(upper_cube, title=f"upper_cube: cube_size: {cube_size:5.3f} upper_cube_z: {upper_cube_z:5.3f}")
 
     # Prepare formatted text with three significant digits
     rerf_number_text = f"{rerf_number}"
@@ -83,19 +80,13 @@ def generate_shape(ctx: Context, rerf_number: int, row_col: int, cube_size: floa
     if rerf_number > 0:
         upper_cube = upper_cube.faces(">Y").invoke(make_text(rerf_number_text, htext * 2.0))
     upper_cube = upper_cube.faces("<Y").invoke(make_text(row_col_text, htext * 2.0))
-    #show(upper_cube, title=f"upper_cube: with_text cube_size: {cube_size:5.3f} upper_cube_zt: {upper_cube_zt:5.3f}")
+    #show(upper_cube, title=f"upper_cube: with_text cube_size: {cube_size:5.3f} upper_cube_z: {upper_cube_z:5.3f}")
 
-    # Create the base cube centered at (0,0,0) on the XY plane
-    base_cube = cq.Workplane("XY").box(cube_size, cube_size, cube_size)
-
-    # Move the base cube to final position for the bottom of the tube is on the XY plane
-    base_cube_zt = round_to_resolution(cube_size_half, ctx.layer_height)
-    base_cube = base_cube.translate((0, 0, base_cube_zt))
-    #show(base_cube, title=f"base_cube: cube_size: {cube_size:5.3f} upper_cube_zt: {upper_cube_zt:5.3f}")
+    # Create the base cube centered at (0,0,0) with base on the XY plane
+    base_cube = cq.Workplane("XY").box(cube_size, cube_size, cube_size, centered=(True, True, False))
 
     # Create the tube between the two cubes with half of the overlap in the base and upper cubes
-    overlap = round_to_resolution((0.10 * tube_length), ctx.layer_height)
-    tube_full_length = round_to_resolution(tube_length + overlap, ctx.layer_height)
+    tube_full_length = round_to_resolution(tube_length + ctx.overlap, ctx.layer_height)
     tube_radius = round_to_resolution((tube_hole_diameter + (tube_wall_thickness * 2)) / 2, ctx.bed_resolution)
 
     # Base of tube is on the XY plane
@@ -103,9 +94,9 @@ def generate_shape(ctx: Context, rerf_number: int, row_col: int, cube_size: floa
 
     # Move the tube from the XY plane to the top of the base cube
     # but with half of the overlap into the base cube
-    tube_zt = round_to_resolution(cube_size - (overlap / 2), ctx.layer_height)
-    tube = tube.translate((0, 0, tube_zt))
-    #show(tube, title=f"tube overlap: {overlap:5.3f}, tube_full_length: {tube_full_length:5.3f}, tube_radius: {tube_radius:5.3f}")
+    tube_z = round_to_resolution(cube_size - (ctx.overlap / 2), ctx.layer_height)
+    tube = tube.translate((0, 0, tube_z))
+    #show(tube, title=f"tube overlap: {ctx.overlap:5.3f}, tube_full_length: {tube_full_length:5.3f}, tube_radius: {tube_radius:5.3f}")
 
     # Union the upper cube and the tube and the base cube
     shape = base_cube.union(tube).union(upper_cube)
@@ -115,9 +106,7 @@ def generate_shape(ctx: Context, rerf_number: int, row_col: int, cube_size: floa
     shape = shape.faces(">Z").workplane(centerOption="CenterOfMass").hole(tube_hole_diameter)
     #show(shape, title="shape with hole")
 
-    ## Shift the cube so its bottom face is on the XY plane at Z=0
-    #shape = shape.translate((0, 0, cube_size / 2))
-
+    # Shape on the XY plane with the bottom at z=0
     return shape
 
 def support_pillar_base_cube(ctx: Context, support_len: float, support_diameter: float, support_tip_diameter: float):
@@ -128,11 +117,13 @@ def support_pillar_base_cube(ctx: Context, support_len: float, support_diameter:
         https://chatgpt.com/share/67f8446f-77b4-800c-ba3c-30de5b676896
 
     Parameters:
+        ctx (Context): The context object containing overall parameters for the model.
         support_len (float): The length of the support pillar.
         support_diameter (float): The diameter of the base of the support.
         support_tip_diameter (float): The diameter of the tip of the support.
     Returns:
-        CadQuery object representing the support pillar.
+        CadQuery object representing a support pillar.
+        Located on the XY plane with the bottom at z=0.
     """
     base_len = support_len / 2
     tip_len = support_len / 2
@@ -158,11 +149,13 @@ def generate_square_support_base(ctx: Context, base_size: float, base_height: fl
         https://chatgpt.com/share/67f84393-dd80-800c-8a29-d3d0e446f434)
 
     Parameters:
+        ctx (Context): The context object containing overall parameters for the model.
         base_size (float): The size of the base.
         base_layers (float): The number of layers for the base.
 
     Returns:
-        CadQuery object representing the square base.
+        CadQuery object representing the square base
+        sitting on the xy plane with the bottom at z=0.
     """
     # Calculate the base height and the top is full sized
     top_size = base_size
@@ -184,8 +177,6 @@ def generate_square_support_base(ctx: Context, base_size: float, base_height: fl
 def generate_base_cube_supports(
         ctx: Context,
         cube_size: float,
-        base_size: float,
-        base_height: float,
         support_len: float,
         support_base_diameter: float,
         support_tip_diameter: float):
@@ -193,47 +184,36 @@ def generate_base_cube_supports(
     Generates a support structure for the cube.
 
     Parameters:
-        ctx (Context): The context object containing parameters for the model.
-        cube_size (float): The size of the cube.
-        base_size (float): The size of the base.
-        base_layers (float): The number of layers for the base.
+        ctx (Context): The context object containing overall parameters for the model.
+        cube_size (float): The size of the cube, use to position supports beneath cube.
         support_len (float): The length of the support structure.
         support_base_diameter (float): The diameter of the base of the support.
         support_tip_diameter (float): The diameter of the tip of the support.
 
     Returns:
-        CadQuery object representing the final support structure.
+        CadQuery object representing the supports for the base cube.
+        Located on the XY plane with the bottom at z=0.
     """
-
-    # Create a cube for the base laying on the xy plane
-    base = generate_square_support_base(ctx, base_size, base_height)
-
-    # Add lenth to the support to guarantee here is overlap with cube and base
-    support_len_fudge = 4 * ctx.layer_height
-
-    # 1/2 of the support_len_fudge is into base the other 1/2 is into the cube
-    support_z = base_height - (support_len_fudge / 2)
 
     # The support pillar is the length of the support includes the base_height
     # so we exclude it but we add the fudge so there is significant overlap between
     # the cube and the base.
-    support_pillar_len = (support_len - base_height) + support_len_fudge
     support_radius = support_base_diameter / 2
     support_loc_offset = (cube_size / 2) - support_radius
 
-    support1 = support_pillar_base_cube(ctx, support_pillar_len, support_base_diameter, support_tip_diameter).clean()
-    support1 = support1.translate((-support_loc_offset, -support_loc_offset, support_z))
-    support2 = support_pillar_base_cube(ctx, support_pillar_len, support_base_diameter, support_tip_diameter).clean()
-    support2 = support2.translate((support_loc_offset, -support_loc_offset, support_z))
-    support3 = support_pillar_base_cube(ctx, support_pillar_len, support_base_diameter, support_tip_diameter).clean()
-    support3 = support3.translate((0, support_loc_offset, support_z))
+    support1 = support_pillar_base_cube(ctx, support_len, support_base_diameter, support_tip_diameter).clean()
+    support1 = support1.translate((-support_loc_offset, -support_loc_offset, 0))
+    support2 = support_pillar_base_cube(ctx, support_len, support_base_diameter, support_tip_diameter).clean()
+    support2 = support2.translate((support_loc_offset, -support_loc_offset, 0))
+    support3 = support_pillar_base_cube(ctx, support_len, support_base_diameter, support_tip_diameter).clean()
+    support3 = support3.translate((0, support_loc_offset, 0))
     
     # Union the base and support
-    build_object = base.add(support1).add(support2).add(support3).clean()
+    supports = support1.add(support2).add(support3).clean()
 
-    return build_object
+    return supports
 
-def generate_upper_cube_supports(ctx: Context, zloc_base_upper_cube: float, support_diameter: float, support_tip_diameter: float):
+def generate_upper_cube_supports(ctx: Context, support_diameter: float, support_tip_diameter: float):
     """
     Creates a support pillar for upper cube with a base and a tip.
 
@@ -241,7 +221,7 @@ def generate_upper_cube_supports(ctx: Context, zloc_base_upper_cube: float, supp
         https://chatgpt.com/share/67f8446f-77b4-800c-ba3c-30de5b676896
 
     Parameters:
-        support_len (float): The length of the support pillar.
+        ctx (Context): The context object containing overall parameters for the model.
         support_diameter (float): The diameter of the base of the support.
         support_tip_diameter (float): The diameter of the tip of the support.
     Returns:
@@ -269,7 +249,7 @@ def export_model(ctx: Context, model: cq.Workplane, file_name: str, file_format)
     Exports the given CadQuery model to a file in the specified format.
 
     Parameters:
-        ctx (Context): The context object containing parameters for the model.
+        ctx (Context): The context object containing overall parameters for the model.
         model (cq.Workplane): The CadQuery model to export.
         file_name (str): The base name of the output file (without extension).
         file_format (str): The format to export the model ('stl' or 'step').
@@ -296,14 +276,14 @@ def generate_shape_with_support(ctx: Context, rerf_number: int, row_count: int, 
     The function returns the final 3D object.
 
     Parameters:
-        ctx (Context): The context object containing parameters for the model.
+        ctx (Context): The context object containing overall parameters for the model.
         rerf_number (int): The rerf number to engrave on the >Y face, not printed if <= 0.
         column_count (int): The number of columns to create.
         row_count (int): The number of rows to create.
     Returns:
         cq.Workplane: The final 3D object representing the cubes and support structures.
     """
-    support_len_base_cube = ctx.support_len
+    support_len_base_cube = ctx.zlift_height
     support_diameter = round_to_resolution(0.75, ctx.bed_resolution)
     support_tip_diameter = round_to_resolution(0.3, ctx.bed_resolution)
 
@@ -332,20 +312,34 @@ def generate_shape_with_support(ctx: Context, rerf_number: int, row_count: int, 
 
             # Generate the shape
             shape = generate_shape(ctx, rerf_number, row_col, ctx.cube_size, ctx.tube_length, ctx.tube_hole_diameter, ctx.tube_wall_thickness)
-            shape = shape.translate((0, 0, support_len_base_cube))
+            #show(shape, title="shape")
+
+            # Generate base
+            base_height = ctx.base_layers * ctx.layer_height
+            base = generate_square_support_base(ctx, ctx.cube_size * 2, base_height)
+            #show(base, title="base")
 
             # Create the base cube support structure
-            base_height = ctx.base_layers * ctx.layer_height
-            base_cube_supports = generate_base_cube_supports(ctx, ctx.cube_size, ctx.cube_size * 2, base_height, support_len_base_cube, support_diameter, support_tip_diameter)
-            shape = shape.add(base_cube_supports)
+            base_cube_support_len = ctx.zlift_height - base_height + (ctx.overlap * 2)
+            base_cube_supports = generate_base_cube_supports(ctx, ctx.cube_size, base_cube_support_len, support_diameter, support_tip_diameter)
+            #show(base_cube_supports, title="base_cube_supports")
 
             # Create the upper cube support structure
-            zloc_bottom_upper_cube = round_to_resolution(base_height + support_len_base_cube + ctx.cube_size, ctx.layer_height)
-            print(f"zloc_bottom_upper_cube: {zloc_bottom_upper_cube:5.3f}")
+            #zloc_bottom_upper_cube = round_to_resolution(base_height + support_len_base_cube + ctx.cube_size, ctx.layer_height)
+            #print(f"zloc_bottom_upper_cube: {zloc_bottom_upper_cube:5.3f}")
             #upper_cube_supports = generate_upper_cube_supports(ctx, ctx.cube_size, zloc_bottom_upper_cube, support_diameter, support_tip_diameter)
             #shape = shape.add(upper_cube_supports)
 
-            # Move theshape to the specified position on XY plane (i.e. z=0)
+            # Place the base cube support structure on the base
+            base_cube_supports = base_cube_supports.translate((0, 0, base_height - ctx.overlap))
+
+            # Place the shape on the support structure
+            shape = shape.translate((0, 0, ctx.zlift_height))
+
+            # Merge the shape, base_supports ,  cube and the support structure
+            shape = base.add(base_cube_supports).add(shape)
+
+            # Move the shape to the specified position on XY plane (i.e. z=0)
             shape = shape.translate((x, y, 0))
 
             if col == 0 and row == 0:
@@ -386,8 +380,9 @@ default_cube_size = round_to_resolution(2.4, default_bed_resolution) # Make mult
 default_tube_length= round_to_resolution(3 * 2.4, default_layer_height) # Make multiple of layer_height
 default_tube_hole_diameter = round_to_resolution(0.714, default_bed_resolution) # Make multiple of bed_resolution
 default_tube_wall_thickness = round_to_resolution(0.2, default_bed_resolution) # Make multiple of bed_resolution
-default_support_len = 5.0
+default_overlap = round_to_resolution(default_layer_height * 2.0, default_layer_height) # Make multiple of layer_height
 default_base_layers = 10 # Change to mm and then calculate the number of layers
+default_zlift_height = 5
 default_position_box_width = round_to_resolution(5000 * default_bed_resolution, default_bed_resolution)
 default_position_box_height = round_to_resolution(2500 * default_bed_resolution, default_bed_resolution)
 default_position_box_location_x = 0
@@ -427,8 +422,9 @@ if __name__ == "__main__":
     parser.add_argument("-br", "--bed_resolution", type=float, default=default_bed_resolution, help=f"resolution of the printer bed, defaults to {default_bed_resolution}")
     parser.add_argument("-bs", "--bed_size", type=float, default=default_bed_size, help=f"size of the bed, defaults to ({default_bed_size[0]:5.3f}, {default_bed_size[1]:5.3f})")
     parser.add_argument("-lh", "--layer_height", type=float, default=default_layer_height, help=f"Layer height for this print, defaults to {default_layer_height:5.3f}")
-    parser.add_argument("-sl", "--support_len", type=float, default=default_support_len, help=f"Length of the support structure, defaults to {default_support_len:5.3f}")
     parser.add_argument("-bl", "--base_layers", type=int, default=default_base_layers, help=f"Number of layers for the base, defaults to {default_base_layers}")
+    parser.add_argument("-zl", "--zlift_height", type=float, default=default_zlift_height, help="Height from bed to bottom of the cube base, defaults to {default_zlift_height}")
+    parser.add_argument("-ol", "--overlap", type=float, default=default_overlap, help=f"Overlap between two objects, defaults to {default_overlap:5.3f}")
     parser.add_argument("-pbsp", "--position_box_size", type=float, nargs=2, default=[default_position_box_width, default_position_box_height], metavar=('width', 'height'), help=f"Size of box to disperse the cubes into, defaults to ({default_position_box_width}, {default_position_box_height})")
     parser.add_argument("-pbl", "--position_box_location", type=float, nargs=2, default=[default_position_box_location_x, default_position_box_location_y], metavar=('x', 'y'), help=f"Location of position_box, defaults to ({default_position_box_location_x}, {default_position_box_location_y})")
     parser.add_argument("-re", "--rerf", type=bool, action=argparse.BooleanOptionalAction, default=default_rerf, help=f"If true generate 8 objects in R_E_R_F orientation, defaults to {default_rerf}")
@@ -462,8 +458,9 @@ if __name__ == "__main__":
         bed_resolution=args.bed_resolution,
         bed_size=args.bed_size,
         layer_height=args.layer_height,
-        support_len=args.support_len,
+        overlap=args.overlap,
         base_layers=args.base_layers,
+        zlift_height=args.zlift_height,
         position_box_size=[args.position_box_size[0], args.position_box_size[1]],
         position_box_location=[args.position_box_location[0], args.position_box_location[1]],
         rerf=args.rerf,
@@ -557,7 +554,7 @@ elif __name__ == "__cq_main__":
         bed_resolution=default_bed_resolution,
         bed_size=default_bed_size,
         layer_height=default_layer_height,
-        support_len=default_support_len,
+        overlap=default_overlap,
         base_layers=default_base_layers,
         position_box_size=[default_position_box_width, default_position_box_height],
         position_box_location=[default_position_box_location_x, default_position_box_location_y],
