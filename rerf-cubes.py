@@ -155,7 +155,7 @@ def generate_square_support_base(ctx: Context, base_size: float, base_height: fl
     Parameters:
         ctx (Context): The context object containing overall parameters for the model.
         base_size (float): The size of the base.
-        base_layers (float): The number of layers for the base.
+        base_height (float): The height of the base.
 
     Returns:
         CadQuery object representing the square base
@@ -216,37 +216,6 @@ def generate_base_cube_supports(
     supports = support1.add(support2).add(support3).clean()
 
     return supports
-
-def generate_upper_cube_supports(ctx: Context, support_diameter: float, support_tip_diameter: float):
-    """
-    Creates a support pillar for upper cube with a base and a tip.
-
-    Created with the help of ChatGPT:
-        https://chatgpt.com/share/67f8446f-77b4-800c-ba3c-30de5b676896
-
-    Parameters:
-        ctx (Context): The context object containing overall parameters for the model.
-        support_diameter (float): The diameter of the base of the support.
-        support_tip_diameter (float): The diameter of the tip of the support.
-    Returns:
-        CadQuery object representing the support pillar.
-    """
-
-    base_len = support_len / 2
-    tip_len = support_len / 2
-
-    # Base: create a cylinder for the base
-    base = cq.Workplane("XY").circle(support_diameter / 2).extrude(base_len)
-
-    # Cone: create using makeCone and move it into place
-    tip = cq.Solid.makeCone(
-        support_diameter / 2,
-        support_tip_diameter / 2,
-        tip_len,
-    ).translate(cq.Vector(0, 0, base_len))
-
-    return base.union(tip)
-
 
 def export_model(ctx: Context, model: cq.Workplane, file_name: str, file_format) -> None:
     """
@@ -319,29 +288,28 @@ def generate_shape_with_support(ctx: Context, row_count: int, col_count: int, re
             #show(shape, title="shape")
 
             # Generate base
-            base_height = ctx.base_layers * ctx.layer_height
-            base = generate_square_support_base(ctx, ctx.cube_size * 2, base_height)
+            base = generate_square_support_base(ctx, ctx.base_size, ctx.base_height)
             #show(base, title="base")
 
             # Create the base cube support structure
-            base_cube_support_len = ctx.zlift_height - base_height + (ctx.overlap * 2)
+            base_cube_support_len = ctx.zlift_height - ctx.base_height + (ctx.overlap * 2)
             base_cube_supports = generate_base_cube_supports(ctx, ctx.cube_size, base_cube_support_len, support_diameter, support_tip_diameter)
             #show(base_cube_supports, title="base_cube_supports")
 
-            # Create the upper cube support structure
-            #zloc_bottom_upper_cube = round_to_resolution(base_height + support_len_base_cube + ctx.cube_size, ctx.layer_height)
-            #print(f"zloc_bottom_upper_cube: {zloc_bottom_upper_cube:5.3f}")
-            #upper_cube_supports = generate_upper_cube_supports(ctx, ctx.cube_size, zloc_bottom_upper_cube, support_diameter, support_tip_diameter)
-            #shape = shape.add(upper_cube_supports)
+            ## Create the upper cube support structure
+            #upper_cube_support_len = ctx.zlift_height - base_height + ctx.cube_size + ctx.tube_len + (ctx.overlap * 2)
+            #upper_cube_supports = generate_upper_cube_supports(ctx, ctx.cube_size, upper_cube_support_len, support_diameter, support_tip_diameter)
+            ##show(base_cube_supports, title="base_cube_supports")
 
-            # Place the base cube support structure on the base
-            base_cube_supports = base_cube_supports.translate((0, 0, base_height - ctx.overlap))
-
-            # Place the shape on the support structure
+            # Move the base, base_supports, uppoer_supports and shape to the correct position
+            base = base.translate((0, 0, 0))
+            base_cube_supports = base_cube_supports.translate((0, 0, ctx.base_height - ctx.overlap))
+            #upper_cube_supports = upper_cube_supports.translate((0, 0, ctx.base_height - ctx.overlap))
             shape = shape.translate((0, 0, ctx.zlift_height))
 
-            # Merge the shape, base_supports ,  cube and the support structure
+            # Merge base, base_supports, upper_supports and shape
             shape = base.add(base_cube_supports).add(shape)
+            #shape = base.add(base_cube_supports).add(upper_base_supports).add(shape)
 
             # Move the shape to the specified position on XY plane (i.e. z=0)
             shape = shape.translate((x, y, 0))
@@ -386,7 +354,8 @@ default_tube_length= round_to_resolution(3 * 2.4, default_layer_height) # Make m
 default_tube_hole_diameter = round_to_resolution(0.714, default_bed_resolution) # Make multiple of bed_resolution
 default_tube_wall_thickness = round_to_resolution(0.2, default_bed_resolution) # Make multiple of bed_resolution
 default_overlap = round_to_resolution(default_layer_height * 2.0, default_layer_height) # Make multiple of layer_height
-default_base_layers = 10 # Change to mm and then calculate the number of layers
+default_base_size = round_to_resolution(default_cube_size * 2, default_bed_resolution) # Size of the square base in mm
+default_base_height = round_to_resolution(default_layer_height * 10, default_layer_height) # height of the base in mm
 default_zlift_height = 5
 default_position_box_width = round_to_resolution(5000 * default_bed_resolution, default_bed_resolution)
 default_position_box_height = round_to_resolution(2500 * default_bed_resolution, default_bed_resolution)
@@ -424,10 +393,11 @@ if __name__ == "__main__":
     parser.add_argument("-tl", "--tube_length", type=float, default=default_tube_length, help=f"Tube length defaults to {default_tube_length:5.3f}")
     parser.add_argument("-thd", "--tube_hole_diameter", type=float, default=default_tube_hole_diameter, help=f"Tube hole diameter engraved on the -X face, defaults to {default_tube_hole_diameter:5.3f}")
     parser.add_argument("-twt", "--tube_wall_thickness", type=float, default=default_tube_wall_thickness, help=f"Tube wall thickness, defaults to {default_tube_wall_thickness:5.3f}")
-    parser.add_argument("-br", "--bed_resolution", type=float, default=default_bed_resolution, help=f"resolution of the printer bed, defaults to {default_bed_resolution}")
-    parser.add_argument("-bs", "--bed_size", type=float, default=default_bed_size, help=f"size of the bed, defaults to ({default_bed_size[0]:5.3f}, {default_bed_size[1]:5.3f})")
+    parser.add_argument("--bed_resolution", type=float, default=default_bed_resolution, help=f"resolution of the printer bed, defaults to {default_bed_resolution}")
+    parser.add_argument("--bed_size", type=float, default=default_bed_size, help=f"size of the bed, defaults to ({default_bed_size[0]:5.3f}, {default_bed_size[1]:5.3f})")
     parser.add_argument("-lh", "--layer_height", type=float, default=default_layer_height, help=f"Layer height for this print, defaults to {default_layer_height:5.3f}")
-    parser.add_argument("-bl", "--base_layers", type=int, default=default_base_layers, help=f"Number of layers for the base, defaults to {default_base_layers}")
+    parser.add_argument("-bs", "--base_size", type=int, default=default_base_size, help=f"Size of the square base in mm, defaults to {default_base_size:5.3}")
+    parser.add_argument("-bh", "--base_height", type=int, default=default_base_height, help=f"Base height in mm, defaults to {default_base_height:5.3f}")
     parser.add_argument("-zl", "--zlift_height", type=float, default=default_zlift_height, help="Height from bed to bottom of the solenoid base, defaults to {default_zlift_height}")
     parser.add_argument("-ol", "--overlap", type=float, default=default_overlap, help=f"Overlap between two objects, defaults to {default_overlap:5.3f}")
     parser.add_argument("-pbsp", "--position_box_size", type=float, nargs=2, default=[default_position_box_width, default_position_box_height], metavar=('width', 'height'), help=f"Size of box to disperse the solenoids into, defaults to ({default_position_box_width}, {default_position_box_height})")
@@ -464,7 +434,8 @@ if __name__ == "__main__":
         bed_size=args.bed_size,
         layer_height=args.layer_height,
         overlap=args.overlap,
-        base_layers=args.base_layers,
+        base_size=args.base_size,
+        base_height=args.base_height,
         zlift_height=args.zlift_height,
         position_box_size=[args.position_box_size[0], args.position_box_size[1]],
         position_box_location=[args.position_box_location[0], args.position_box_location[1]],
@@ -570,7 +541,8 @@ elif __name__ == "__cq_main__":
         bed_size=default_bed_size,
         layer_height=default_layer_height,
         overlap=default_overlap,
-        base_layers=default_base_layers,
+        base_size=default_base_size,
+        base_height=default_base_height,
         position_box_size=[default_position_box_width, default_position_box_height],
         position_box_location=[default_position_box_location_x, default_position_box_location_y],
         rerf=default_rerf,

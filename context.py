@@ -59,8 +59,11 @@ class Context:
     layer_height: float
     # The layer height is the vertical resolution of the print
 
-    base_layers: int
-    # The number of layers in the base of the object
+    base_size: float
+    # Size of the sides for a square base in mm
+
+    base_height: float
+    # Height of the base in mm
 
     overlap: float
     # The distance that one object is buried into the other object
