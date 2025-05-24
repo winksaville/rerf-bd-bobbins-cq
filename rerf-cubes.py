@@ -1,4 +1,8 @@
 #!/usr/bin/env python3
+
+# Rerf generator for braille dot solenoids
+# Note: rerf and R_E_R_F are short for "Resin Exposure Range Finder"
+
 import argparse
 import logging
 import cadquery as cq
@@ -27,18 +31,18 @@ def round_to_resolution(value: float, resolution: float) -> float:
     return round(value / resolution) * resolution
 
 
-def generate_shape(ctx: Context, rerf_number: int, row_col: int, cube_size: float, tube_length: float, tube_hole_diameter: float, tube_wall_thickness: float) ->   cq.Workplane:
+def generate_shape(ctx: Context, row_col: int, cube_size: float, tube_length: float, tube_hole_diameter: float, tube_wall_thickness: float, rerf_number=None) ->   cq.Workplane:
     """
     Generates a shape with text inscriptions on specified faces.
 
     Parameters:
         ctx (Context): The context object containing overall parameters for the model.
-        rerf_number (int): The rerf number to engrave on the <Y face, not printed if <= 0.
-        row_col (int): The cube number to engrave on the >Y face.
+        row_col (int): The row column number to engrave on the <Y face.
         cube_size (float): The size of the cube to engrave on the >X face.
         tube_length (float): The length of the tube between the two cubes.
         tube_hole_diameter (float): The diameter of the hole in the tube and cube.
         tube_wall_thickness (float): The wall thickness of the tube.
+        rerf_number (Optional): The rerf number to engrave on the >Y face, not printed if None
 
     Returns:
         CadQuery object representing the final shape.
@@ -77,7 +81,7 @@ def generate_shape(ctx: Context, rerf_number: int, row_col: int, cube_size: floa
     # Add text into the respective faces
     upper_cube = upper_cube.faces(">X").invoke(make_text(cube_size_text, htext))
     upper_cube = upper_cube.faces("<X").invoke(make_text(tube_hole_diameter_text, htext))
-    if rerf_number > 0:
+    if rerf_number:
         upper_cube = upper_cube.faces(">Y").invoke(make_text(rerf_number_text, htext * 2.0))
     upper_cube = upper_cube.faces("<Y").invoke(make_text(row_col_text, htext * 2.0))
     #show(upper_cube, title=f"upper_cube: with_text cube_size: {cube_size:5.3f} upper_cube_z: {upper_cube_z:5.3f}")
@@ -266,20 +270,20 @@ def export_model(ctx: Context, model: cq.Workplane, file_name: str, file_format)
     else:
         print("Unsupported format. Use 'stl' or 'step'.", file=sys.sdterr)
 
-def generate_shape_with_support(ctx: Context, rerf_number: int, row_count: int, col_count: int) -> cq.Workplane:
+def generate_shape_with_support(ctx: Context, row_count: int, col_count: int, rerf_number=None) -> cq.Workplane:
     """
-    Generates a one or more shapes with support as specified by row_count and col_count.
+    Generates one or more shapes with support as specified by row_count and col_count.
 
-    Each shape is placed in a grid pattern within the specified position box.
-    The shapes are positioned so that they are centered within the position box.
+    Each shape is placed in a grid pattern within the specified context position box.
+    The shapes are positioned so that they are centered within the context position box.
     The shapes are also supported by a support structure.
     The function returns the final 3D object.
 
     Parameters:
         ctx (Context): The context object containing overall parameters for the model.
-        rerf_number (int): The rerf number to engrave on the >Y face, not printed if <= 0.
         column_count (int): The number of columns to create.
         row_count (int): The number of rows to create.
+        rerf_number (None): The rerf number to engrave on the >Y face, not printed if <= 0.
     Returns:
         cq.Workplane: The final 3D object representing the cubes and support structures.
     """
@@ -311,7 +315,7 @@ def generate_shape_with_support(ctx: Context, rerf_number: int, row_count: int, 
             print(f"rerf_number: {rerf_number} row_col: {row_col:02d} x: {x:5.3f}, y: {y:5.3f}")
 
             # Generate the shape
-            shape = generate_shape(ctx, rerf_number, row_col, ctx.cube_size, ctx.tube_length, ctx.tube_hole_diameter, ctx.tube_wall_thickness)
+            shape = generate_shape(ctx, row_col, ctx.cube_size, ctx.tube_length, ctx.tube_hole_diameter, ctx.tube_wall_thickness, rerf_number)
             #show(shape, title="shape")
 
             # Generate base
@@ -352,11 +356,12 @@ def generate_shape_with_support(ctx: Context, rerf_number: int, row_count: int, 
         print(f"position_box_location_x: {ctx.position_box_location[0]:5.3f}, position_box_location_y: {ctx.position_box_location[1]:5.3f}")
         build_object = build_object.translate((ctx.position_box_location[0], ctx.position_box_location[1], 0))
 
-    # Create the file_name if this isn't an rerf build and there is a file name
-    size_in_mm = ctx.position_box_size[0], ctx.position_box_size[1]
-    location_in_mm = [(ctx.position_box_location[0]), (ctx.position_box_location[1])]
     if ctx.file_name != "":
-        # We are going to export the object shape a file
+        # The user wants to output a file for this sets objects
+
+        # Formate We are going to export the object shape a file
+        size_in_mm = ctx.position_box_size[0], ctx.position_box_size[1]
+        location_in_mm = [(ctx.position_box_location[0]), (ctx.position_box_location[1])]
         if ctx.rerf:
             if ctx.file_name.__contains__("_rerf_rc-") == False:
                 # Update the file name for the rerf build only once
@@ -423,9 +428,9 @@ if __name__ == "__main__":
     parser.add_argument("-bs", "--bed_size", type=float, default=default_bed_size, help=f"size of the bed, defaults to ({default_bed_size[0]:5.3f}, {default_bed_size[1]:5.3f})")
     parser.add_argument("-lh", "--layer_height", type=float, default=default_layer_height, help=f"Layer height for this print, defaults to {default_layer_height:5.3f}")
     parser.add_argument("-bl", "--base_layers", type=int, default=default_base_layers, help=f"Number of layers for the base, defaults to {default_base_layers}")
-    parser.add_argument("-zl", "--zlift_height", type=float, default=default_zlift_height, help="Height from bed to bottom of the cube base, defaults to {default_zlift_height}")
+    parser.add_argument("-zl", "--zlift_height", type=float, default=default_zlift_height, help="Height from bed to bottom of the solenoid base, defaults to {default_zlift_height}")
     parser.add_argument("-ol", "--overlap", type=float, default=default_overlap, help=f"Overlap between two objects, defaults to {default_overlap:5.3f}")
-    parser.add_argument("-pbsp", "--position_box_size", type=float, nargs=2, default=[default_position_box_width, default_position_box_height], metavar=('width', 'height'), help=f"Size of box to disperse the cubes into, defaults to ({default_position_box_width}, {default_position_box_height})")
+    parser.add_argument("-pbsp", "--position_box_size", type=float, nargs=2, default=[default_position_box_width, default_position_box_height], metavar=('width', 'height'), help=f"Size of box to disperse the solenoids into, defaults to ({default_position_box_width}, {default_position_box_height})")
     parser.add_argument("-pbl", "--position_box_location", type=float, nargs=2, default=[default_position_box_location_x, default_position_box_location_y], metavar=('x', 'y'), help=f"Location of position_box, defaults to ({default_position_box_location_x}, {default_position_box_location_y})")
     parser.add_argument("-re", "--rerf", type=bool, action=argparse.BooleanOptionalAction, default=default_rerf, help=f"If true generate 8 objects in R_E_R_F orientation, defaults to {default_rerf}")
     parser.add_argument("-s", "--show", type=bool, action=argparse.BooleanOptionalAction, default=default_show, help="Show the created object in the viewer")
@@ -469,13 +474,22 @@ if __name__ == "__main__":
     logging.debug(f"ctx: {ctx}")
 
     if ctx.rerf:
-        # Currently only the Anycubic Mono 4 printer
+        print("Generating 8 sets of R_E_R_F cubes with rerf_numbers 1 .. 8")
+
+        # Generate ctx.row_count * ctx.col_count number of 3D objects in each position box
+        # of in a R_E_R_F set. A R_E_R_F is a 2x4 grid. The idea is that each position box
+        # has a different exposure time and the upper left corner has the shortest exposure
+        # and the lower right corner has the longest exposure. The rerf_number for all the
+        # objects in a particular R_E_R_F grid and will be 1 .. 8.
+
+        # The sequential_to_printer_order is a two dimensional array of printers, the
+        # first dimension is the printer idx and the second is the arrangement order.
+        # Currently we only have one printer, the Anycubic Mono 4, which is a simple reversal
         any_cubic_mono_4 = 0
         current_printer = any_cubic_mono_4
         sequential_to_printer_order = [
             [8, 7, 6, 5, 4, 3, 2, 1] # Anycubic Mono 4 is a simple reversal
         ]
-
 
         # Were going to generate 2 rows with and 4 columns of
         # build_objects positioning them on the build plate
@@ -519,7 +533,7 @@ if __name__ == "__main__":
                 print(f"sequential_order: {sequential_order} rerf_number: {rerf_number}")
 
                 # Generate the cubes
-                bo = generate_shape_with_support(ctx, rerf_number, ctx.row_count, ctx.col_count)
+                bo = generate_shape_with_support(ctx, ctx.row_count, ctx.col_count, rerf_number)
 
                 # Group them into a single object
                 if rerf_number_col == 0 and rerf_number_row == 0:
@@ -527,9 +541,10 @@ if __name__ == "__main__":
                 else:
                     build_object = build_object.add(bo)
     else:
-        # Generate a 3D object using the specified number of rows and columns
+        print("Generating one set of objects with no rerf_number")
+        # Generate only one 3D object in each position box using the specified number of rows and columns
         # and export it to the specified file format
-        build_object = generate_shape_with_support(ctx, 0, ctx.row_count, ctx.col_count)
+        build_object = generate_shape_with_support(ctx, ctx.row_count, ctx.col_count, rerf_number=None)
 
     # Export the file if a file name is provided
     if ctx.file_name != "":
@@ -563,7 +578,7 @@ elif __name__ == "__cq_main__":
     )
     logging.debug(f"ctx: {ctx}")
 
-    # Generate the 3D object using the specified number of rows and columns
+    # Generate the 3D objects using the specified number of rows and columns
     # and use the cadquery show_object function to display it
     build_object = generate_shape_with_support(ctx, ctx.row_count, ctx.col_count)
     show_object(build_object, name=ctx.file_name)

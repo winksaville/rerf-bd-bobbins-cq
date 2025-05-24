@@ -1,15 +1,38 @@
-# 3D Cube with Text - CadQuery App
+# R_E_R_F generator for prototype braille dot solenoid using CadQuery
 
-This repository provides a simple Python application (`rerf-cubes-cq`) that generates 4 3D cubes in
-the 4 corners of the build plate. The are marked with the number 1 at the origin, 2 at +Y
-3 at +X and 4 at +X, +Y. Printing that didn't work out well, I manually fiddled with the
-base with 1 layer and 3 second exposure. That didn't produce any completed prints.
+This app generates a set of prototype braille dot solenoids that
+are arranged in a grid pattern. The objects are designed to be printed
+on a resin 3D printer which supports "Resin Exposure Range Finder"
+files. On some AnyCubic resin 3D printers this is done by having the
+basename of the file, the portion of the file name precceding the
+file extension, being R_E_R_F. For the Photon Mono 4 the extension is
+`.pm4n`.
 
-I've now added base and standoffs using Lychee and we'll see if that's any better and it's file
-boxes-at-corners-lychee-supports.pm4n.
+The app operates in two modes controlled by `--rerf` and `--no-rerf` with
+the default being `--no-rerf`. In the `--rerf` mode the printer bed is
+divided into 8 grid areas, each of which contains a set of solenoids
+that are arranged in a row and column pattern. And the exposure time in
+each area increases by 250ms, at least in the AnyCubic Photon Mono 4 printer.
 
-My next step is to add the supports in this app as eventually I'll have quite a few cubes and
-adding supports manually won't be practical.
+A rerf_number is printed on the positive Y face, ">Y", of the upper cube
+and each solenoid in that area has the same rerf_number. Thus this
+identifies the exposure time for that solenoid. Also, each solenoid is
+also engraved with the `row_count` and `col_count` parameters on the
+negative Y face, "\<Y", of the upper cube. This allows you to identify
+which position within the grid area the solenoid is located further
+allowing the user to identify possible exposure descrpencies within
+an area and the print bed as a whole.
+
+On the positive X face, ">X", of the upper cube is the `--cube_size`
+parameter which is the size of the cube in millimeters. And
+on the negative X face, "\<X", of the upper cube is the `--tube_hole_diameter`,
+which is the diameter of the tube hole in millimeters.
+
+You must supply 4 parameters to the app:
+- `filename`: The name of the output file (without extension).
+- `format`: The format to export the model, either `stl` or `step`.
+- `row_count`: The number of rows to create (must be >= 1).
+- `col_count`: The number of columns to create (must be >= 1).
 
 
 ## Requirements
