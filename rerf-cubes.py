@@ -217,6 +217,116 @@ def generate_base_cube_supports(
 
     return supports
 
+def support_pillar_upper_cube(
+    ctx: Context,
+    support_len: float,
+    support_base_loc: tuple[float, float],
+    support_base_diameter: float,
+    support_tip_loc: tuple[float, float],
+    support_tip_diameter: float) -> cq.Workplane:
+    """
+    Creates a support pillar with a base and a tip.
+
+    Parameters:
+        ctx (Context): The context object containing overall parameters for the model.
+        support_len (float): The length of the support pillar.
+        support_base_loc (tuple[float, float]): The location of the base of the support.
+        support_base_diameter (float): The diameter of the base of the support.
+        support_tip_loc (tuple[float, float]): The location of the tip of the support.
+        support_tip_diameter (float): The diameter of the tip of the support.
+    Returns:
+        CadQuery object representing a support pillar.
+    """
+
+    pts = [
+        (support_base_loc[0], support_base_loc[1], 0),
+        (support_base_loc[0], support_base_loc[1], support_len / 2),
+        (support_tip_loc[0], support_tip_loc[1], support_len)
+    ]
+    tangents = [(0, 0, 1), (0, 0, support_len / 2), (0, 0, support_len)]
+
+    path = cq.Workplane("XY").spline(pts, tangents)
+    print(f"pts: {pts}")
+    print(f"tangents: {tangents}")
+    print(f"Path: {path}")
+
+    bottom_loc = [path.val().locationAt(0)]
+    middle_loc = [path.val().locationAt(0.5)]
+    top_loc = [path.val().locationAt(1)]
+    print(f"Bottom location: {bottom_loc[0].toTuple()}")
+    print(f"middle location: {middle_loc[0].toTuple()}")
+    print(f"top location: {top_loc[0].toTuple()}")
+
+    base_radius = support_base_diameter / 2
+    middle_radius = base_radius
+    top_radius = support_tip_diameter / 2
+    print(f"base_radius: {base_radius:5.3f}")
+    print(f"middle_radius: {middle_radius:5.3f}")
+    print(f"top_radius: {top_radius:5.3f}")
+
+    wp = cq.Workplane("XY").pushPoints(bottom_loc).circle(base_radius)
+    wp = wp.pushPoints(middle_loc).circle(middle_radius)
+    wp = wp.pushPoints(top_loc).circle(top_radius)
+
+    support = wp.sweep(path, multisection=True)
+    return support
+
+def generate_upper_cube_supports(
+    ctx: Context,
+    cube_size: float,
+    base_size: float,
+    support_len: float,
+    support_base_diameter: float,
+    support_tip_diameter: float) -> cq.Workplane:
+    """
+    Creates a support pillars for upper cube with a base and a tip.
+
+    Created with the help of ChatGPT:
+        https://chatgpt.com/share/67f8446f-77b4-800c-ba3c-30de5b676896
+
+    Parameters:
+        ctx (Context): The context object containing overall parameters for the model.
+        base_size (float): The size of the base of the cube.
+        support_base_diameter (float): The diameter of the base of the support.
+        support_tip_diameter (float): The diameter of the tip of the support.
+    Returns:
+        CadQuery object representing the support pillar.
+    """
+
+    support_base_loc_offset = (base_size / 2) - (support_base_diameter / 2)
+    support_tip_loc_offset = (cube_size / 2) - (support_tip_diameter / 2)
+    print(f"support_base_loc_offset: {support_base_loc_offset:5.3f}, support_tip_loc_offset: {support_tip_loc_offset:5.3f}")
+
+    # Create lower left support pillar
+    support1 = support_pillar_upper_cube(
+        ctx,
+        support_len,
+        support_base_loc=(-support_base_loc_offset, -support_base_loc_offset),
+        support_base_diameter=support_base_diameter,
+        support_tip_loc=(-support_tip_loc_offset, -support_tip_loc_offset),
+        support_tip_diameter=support_tip_diameter).clean()
+
+    # Create upper left support pillar
+    support2 = support_pillar_upper_cube(
+        ctx,
+        support_len,
+        support_base_loc=(-support_base_loc_offset, support_base_loc_offset),
+        support_base_diameter=support_base_diameter,
+        support_tip_loc=(-support_tip_loc_offset, support_tip_loc_offset),
+        support_tip_diameter=support_tip_diameter).clean()
+
+    # Create right support pillar which will be centered on the right side of the cube
+    support3 = support_pillar_upper_cube(
+        ctx,
+        support_len,
+        support_base_loc=(support_base_loc_offset, 0),
+        support_base_diameter=support_base_diameter,
+        support_tip_loc=(support_tip_loc_offset, 0),
+        support_tip_diameter=support_tip_diameter).clean()
+
+    supports = support1.add(support2).add(support3).clean()
+    return supports
+
 def export_model(ctx: Context, model: cq.Workplane, file_name: str, file_format) -> None:
     """
     Exports the given CadQuery model to a file in the specified format.
@@ -297,19 +407,18 @@ def generate_shape_with_support(ctx: Context, row_count: int, col_count: int, re
             #show(base_cube_supports, title="base_cube_supports")
 
             ## Create the upper cube support structure
-            #upper_cube_support_len = ctx.zlift_height - base_height + ctx.cube_size + ctx.tube_len + (ctx.overlap * 2)
-            #upper_cube_supports = generate_upper_cube_supports(ctx, ctx.cube_size, upper_cube_support_len, support_diameter, support_tip_diameter)
-            ##show(base_cube_supports, title="base_cube_supports")
+            upper_cube_support_len = ctx.zlift_height - ctx.base_height + ctx.cube_size + ctx.tube_length + (ctx.overlap * 2)
+            upper_cube_supports = generate_upper_cube_supports(ctx, ctx.cube_size, ctx.base_size, upper_cube_support_len, support_diameter, support_tip_diameter)
+            show(upper_cube_supports, title="upper_cube_supports")
 
             # Move the base, base_supports, uppoer_supports and shape to the correct position
             base = base.translate((0, 0, 0))
             base_cube_supports = base_cube_supports.translate((0, 0, ctx.base_height - ctx.overlap))
-            #upper_cube_supports = upper_cube_supports.translate((0, 0, ctx.base_height - ctx.overlap))
+            upper_cube_supports = upper_cube_supports.translate((0, 0, ctx.base_height - ctx.overlap))
             shape = shape.translate((0, 0, ctx.zlift_height))
 
             # Merge base, base_supports, upper_supports and shape
-            shape = base.add(base_cube_supports).add(shape)
-            #shape = base.add(base_cube_supports).add(upper_base_supports).add(shape)
+            shape = base.add(base_cube_supports).add(upper_cube_supports).add(shape)
 
             # Move the shape to the specified position on XY plane (i.e. z=0)
             shape = shape.translate((x, y, 0))
