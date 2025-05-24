@@ -299,7 +299,7 @@ def generate_shape_with_support(ctx: Context, rerf_number: int, row_count: int, 
     x_initial = cube_size_half
     y_initial = cube_size_half
     x_step = round_to_resolution((position_box_width - ctx.cube_size) / col_count, ctx.bed_resolution)
-    y_step = round_to_resolution((position_box_height - ctx.cube_size) / col_count, ctx.bed_resolution)
+    y_step = round_to_resolution((position_box_height - ctx.cube_size) / row_count, ctx.bed_resolution)
     print(f"x_initial: {x_initial:5.3f}, y_initial: {y_initial:5.3f}, x_step: {x_step:5.3f}, y_step: {y_step:5.3f}")
     for col in range(col_count):
         x = round_to_resolution(x_initial + (x_step * col), ctx.bed_resolution)
