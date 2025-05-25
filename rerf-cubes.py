@@ -318,8 +318,9 @@ def generate_upper_cube_supports(
     support_base_diameter = round_to_resolution(support_base_diameter, ctx.bed_resolution)
     support_tip_diameter = round_to_resolution(support_tip_diameter, ctx.bed_resolution)
 
-    base_offset = round_to_resolution((base_size / 2.0) - ((support_base_diameter * 1.2) / 2.0), ctx.bed_resolution)
-    tip_offset = round_to_resolution((cube_size / 2.0) - ((support_tip_diameter * 1.2) / 2.0), ctx.bed_resolution)
+    adjustment = args.edge_adjustment # Adjustment fatctor to ensure the supports are not too close to the edges
+    base_offset = round_to_resolution((base_size / 2.0) - ((support_base_diameter * adjustment) / 2.0), ctx.bed_resolution)
+    tip_offset = round_to_resolution((cube_size / 2.0) - ((support_tip_diameter * adjustment) / 2.0), ctx.bed_resolution)
 
     support_base_loc_offset = base_offset
     support_tip_loc_offset = tip_offset
@@ -496,6 +497,7 @@ default_tube_wall_thickness = round_to_resolution(0.2, default_bed_resolution) #
 default_overlap = round_to_resolution(default_layer_height * 2.0, default_layer_height) # Make multiple of layer_height
 default_base_size = round_to_resolution(default_cube_size * 2.5, default_bed_resolution) # Size of the square base in mm
 default_base_height = round_to_resolution(default_layer_height * 10, default_layer_height) # height of the base in mm
+default_edge_adjustment = 1.3 # Adjustment factor to ensure the supports are not too close to the edges
 default_zlift_height = 5
 default_position_box_width = round_to_resolution(5000 * default_bed_resolution, default_bed_resolution)
 default_position_box_height = round_to_resolution(2500 * default_bed_resolution, default_bed_resolution)
@@ -538,6 +540,7 @@ if __name__ == "__main__":
     parser.add_argument("-lh", "--layer_height", type=float, default=default_layer_height, help=f"Layer height for this print, defaults to {default_layer_height:5.3f}")
     parser.add_argument("-bs", "--base_size", type=float, default=default_base_size, help=f"Size of the square base in mm, defaults to {default_base_size:5.3}")
     parser.add_argument("-bh", "--base_height", type=float, default=default_base_height, help=f"Base height in mm, defaults to {default_base_height:5.3f}")
+    parser.add_argument("-ea", "--edge_adjustment", type=float, default=default_edge_adjustment, help=f"size of the bed, defaults to ({default_edge_adjustment:5.3f}")
     parser.add_argument("-zl", "--zlift_height", type=float, default=default_zlift_height, help="Height from bed to bottom of the solenoid base, defaults to {default_zlift_height}")
     parser.add_argument("-ol", "--overlap", type=float, default=default_overlap, help=f"Overlap between two objects, defaults to {default_overlap:5.3f}")
     parser.add_argument("-pbsp", "--position_box_size", type=float, nargs=2, default=[default_position_box_width, default_position_box_height], metavar=('width', 'height'), help=f"Size of box to disperse the solenoids into, defaults to ({default_position_box_width}, {default_position_box_height})")
