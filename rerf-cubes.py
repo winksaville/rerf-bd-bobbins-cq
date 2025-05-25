@@ -733,10 +733,12 @@ if __name__ == "__main__":
     # Export the file if a file name is provided
     if ctx.file_name != "":
         # Export the object to the specified file name and file format defined in ctx
+        print(f"Exporting model to {ctx.file_name}.{ctx.file_format}")
         export_model(ctx, build_object, ctx.file_name, ctx.file_format)
 
     # Show the object in the viewer if the show flag is set
     if ctx.show:
+        print("Showing model..")
         show(build_object)
 elif __name__ == "__cq_main__":
     logging.debug(f"__cq_main__ logging.info: __name__: {__name__}")
