@@ -8,8 +8,12 @@ import logging
 import cadquery as cq
 import sys
 
+import math
+from math import radians
+
 from context import Context
 from cadquery.vis import show
+from cadquery import Location, Vector
 
 VERSION = "1.0.0"
 
@@ -28,7 +32,10 @@ def round_to_resolution(value: float, resolution: float) -> float:
     Returns:
         float: The rounded value.
     """
-    return round(value / resolution) * resolution
+    i: int = round(value / resolution)
+    result: float = round(i * resolution, 3)
+    print(f"round_to_resolution: value: {value}, resolution: {resolution}, i: {i}, result: {result}")
+    return result
 
 
 def generate_shape(ctx: Context, row_col: int, cube_size: float, tube_length: float, tube_hole_diameter: float, tube_wall_thickness: float, rerf_number=None) ->   cq.Workplane:
@@ -225,7 +232,7 @@ def support_pillar_upper_cube(
     support_tip_loc: tuple[float, float],
     support_tip_diameter: float) -> cq.Workplane:
     """
-    Creates a support pillar with a base and a tip.
+    Creates a support pillar for upper cube with a base and a tip.
 
     Parameters:
         ctx (Context): The context object containing overall parameters for the model.
@@ -238,37 +245,101 @@ def support_pillar_upper_cube(
         CadQuery object representing a support pillar.
     """
 
+    # Remove the middle section from the support pillar, I've
+    # done this becase the bot https://chatgpt.com/share/683338fa-11b0-800c-be81-3cfb4a8a8fb5
+    # said removing, moving or adding additional sections could up
+    # resolve the issume of getting error:
+    #   OCP.Standard.Standard_NoSuchObject: NCollection_IndexedDataMap::FindFromKey
+    # I slept on the problem and removing the middle section fixed it for now.
     pts = [
         (support_base_loc[0], support_base_loc[1], 0),
-        (support_base_loc[0], support_base_loc[1], support_len / 2),
+        #(support_base_loc[0], support_base_loc[1], support_len / 2),
         (support_tip_loc[0], support_tip_loc[1], support_len)
     ]
-    tangents = [(0, 0, 1), (0, 0, support_len / 2), (0, 0, support_len)]
+    tangents = [
+        (0, 0, 1),
+        #(0, 0, support_len / 2),
+        (0, 0, support_len)
+    ]
 
-    path = cq.Workplane("XY").spline(pts, tangents)
+    spline_path = cq.Workplane("XY").spline(pts, tangents)
     print(f"pts: {pts}")
     print(f"tangents: {tangents}")
-    print(f"Path: {path}")
+    print(f"spline_path: {spline_path}")
 
-    bottom_loc = [path.val().locationAt(0)]
-    middle_loc = [path.val().locationAt(0.5)]
-    top_loc = [path.val().locationAt(1)]
-    print(f"Bottom location: {bottom_loc[0].toTuple()}")
-    print(f"middle location: {middle_loc[0].toTuple()}")
-    print(f"top location: {top_loc[0].toTuple()}")
+    def round_tuple(tup: tuple, ndigits: int = 3) -> tuple:
+        """
+        Rounds each element of a tuple to the specified number of decimal places.
 
-    base_radius = support_base_diameter / 2
+        Parameters:
+            tup (tuple): The tuple to round.
+            ndigits (int): The number of decimal places to round to.
+
+        Returns:
+            tuple: A new tuple with rounded values.
+        """
+        return tuple(round(v, ndigits) for v in tup)
+
+    def round_location(loc: Location, ndigits: int = 3) -> Location:
+        """
+        Rounds the translation and rotation of a Location object to the specified number of decimal places.
+
+        Parameters:
+            loc (Location): The Location object to round.
+            ndigits (int): The number of decimal places to round to.
+
+        Returns:
+            Location: A new Location object with rounded translation and rotation.
+        """
+        trans, rot_deg = loc.toTuple()
+        print(f"round_location: trans: {trans}, rot_deg: {rot_deg}")
+
+        rounded_trans = round_tuple(trans, ndigits)
+        print(f"round_location: round_trans: {rounded_trans}")
+        rounded_rot_deg = round_tuple(rot_deg, ndigits)
+        print(f"round_location: round_rot_deg: {rounded_rot_deg}")
+        rounded_rot_rad = tuple(round(radians(a), ndigits) for a in rounded_rot_deg)
+        print(f"round_location: round_rot_rad: {rounded_rot_rad}")
+
+        print(f"round_location: rounded_trans: {rounded_trans}, rounded_rot_rad: {rounded_rot_rad}")
+        return Location(rounded_trans, rounded_rot_rad)
+
+ 
+    bl = spline_path.val().locationAt(0)
+    print(f"spline_path bl: {bl.toTuple()}")
+    rl_bl = round_location(bl, 3)
+    print(f"spline_path round_location(rl_bl.toTuple()), 3): {rl_bl.toTuple()}")
+    bottom_loc = [rl_bl]
+    print(f"spline_path bottom_loc: {bottom_loc[0].toTuple()}")
+
+    ml = spline_path.val().locationAt(0.5)
+    print(f"spline_path ml: {ml.toTuple()}")
+    rl_ml = round_location(ml, 3)
+    print(f"spline_path round_location(rl_ml.toTuple()), 3): {rl_ml.toTuple()}")
+    middle_loc = [rl_ml]
+    print(f"spline_path middle_loc: {middle_loc[0].toTuple()}")
+    middle_loc = [Location(middle_loc[0].toTuple()[0], (0.0, 0.0, 0.0))]
+    print(f"spline_path fake middle_loc: {middle_loc[0].toTuple()}")
+
+    tl = spline_path.val().locationAt(1)
+    print(f"spline_path tl: {tl.toTuple()}")
+    rl_tl = round_location(tl, 3)
+    print(f"spline_path round_location(rl_tl.toTuple()), 3): {rl_tl.toTuple()}")
+    top_loc = [rl_tl]
+    print(f"spline_path top_loc: {top_loc[0].toTuple()}")
+
+    base_radius = round_to_resolution(support_base_diameter / 2.0, ctx.bed_resolution)
     middle_radius = base_radius
-    top_radius = support_tip_diameter / 2
+    top_radius = round_to_resolution(support_tip_diameter / 2.0, ctx.bed_resolution)
     print(f"base_radius: {base_radius:5.3f}")
     print(f"middle_radius: {middle_radius:5.3f}")
     print(f"top_radius: {top_radius:5.3f}")
 
     wp = cq.Workplane("XY").pushPoints(bottom_loc).circle(base_radius)
-    wp = wp.pushPoints(middle_loc).circle(middle_radius)
+    #wp = wp.pushPoints(middle_loc).circle(middle_radius)
     wp = wp.pushPoints(top_loc).circle(top_radius)
 
-    support = wp.sweep(path, multisection=True)
+    support = wp.sweep(spline_path, multisection=True)
     return support
 
 def generate_upper_cube_supports(
@@ -293,20 +364,45 @@ def generate_upper_cube_supports(
         CadQuery object representing the support pillar.
     """
 
-    support_base_loc_offset = (base_size / 2) - (support_base_diameter / 2)
-    support_tip_loc_offset = (cube_size / 2) - (support_tip_diameter / 2)
-    print(f"support_base_loc_offset: {support_base_loc_offset:5.3f}, support_tip_loc_offset: {support_tip_loc_offset:5.3f}")
+
+    #fudge = 1.0 # ok
+    #fudge = 1.1 # ok
+    #fudge = 1.2 # fails
+    #support_base_loc_offset = round_to_resolution((base_size / 2) - ((support_base_diameter * fudge) / 2), ctx.bed_resolution)
+    #support_tip_loc_offset = round_to_resolution((cube_size / 2) - ((support_tip_diameter * fudge) / 2), ctx.bed_resolution)
+    #print(f"support_base_loc_offset: {support_base_loc_offset:5.3f}, support_tip_loc_offset: {support_tip_loc_offset:5.3f}")
+
+    cube_size = round_to_resolution(cube_size, ctx.bed_resolution)
+    base_size = round_to_resolution(base_size, ctx.bed_resolution)
+    suppor_len = round_to_resolution(support_len, ctx.layer_height)
+    support_base_diameter = round_to_resolution(support_base_diameter, ctx.bed_resolution)
+    support_tip_diameter = round_to_resolution(support_tip_diameter, ctx.bed_resolution)
+
+    base_offset = round_to_resolution((base_size / 2.0) - ((support_base_diameter * 1.2) / 2.0), ctx.bed_resolution)
+    tip_offset = round_to_resolution((cube_size / 2.0) - ((support_tip_diameter * 1.2) / 2.0), ctx.bed_resolution)
+    #base_offset = round_to_resolution((base_size / 2.0) - ((support_base_diameter * 1.1) / 2.0), ctx.bed_resolution)
+    #tip_offset = round_to_resolution((cube_size / 2.0) - ((support_tip_diameter * 1.1) / 2.0), ctx.bed_resolution)
+    #base_offset = round_to_resolution((base_size / 2.0) - ((support_base_diameter) / 2.0), ctx.bed_resolution)
+    #tip_offset = round_to_resolution((cube_size / 2.0) - ((support_tip_diameter) / 2.0), ctx.bed_resolution)
+    print(f"base_offset: {base_offset}, tip_offset: {tip_offset}")
+
+    support_base_loc_offset = base_offset
+    support_tip_loc_offset = tip_offset
+    print(f"support_base_loc_offset: {support_base_loc_offset}, support_tip_loc_offset: {support_tip_loc_offset}")
+
+    neg_support_base_loc_offset = round_to_resolution(-support_base_loc_offset, ctx.bed_resolution)
+    neg_support_tip_loc_offset = round_to_resolution(-support_tip_loc_offset, ctx.bed_resolution)
 
     # Create lower left support pillar
     support1 = support_pillar_upper_cube(
         ctx,
         support_len,
-        support_base_loc=(-support_base_loc_offset, -support_base_loc_offset),
+        support_base_loc=(neg_support_base_loc_offset, neg_support_base_loc_offset),
         support_base_diameter=support_base_diameter,
-        support_tip_loc=(-support_tip_loc_offset, -support_tip_loc_offset),
+        support_tip_loc=(neg_support_tip_loc_offset, neg_support_tip_loc_offset),
         support_tip_diameter=support_tip_diameter).clean()
 
-    # Create upper left support pillar
+    ## Create upper left support pillar
     support2 = support_pillar_upper_cube(
         ctx,
         support_len,
@@ -322,9 +418,13 @@ def generate_upper_cube_supports(
         support_base_loc=(support_base_loc_offset, 0),
         support_base_diameter=support_base_diameter,
         support_tip_loc=(support_tip_loc_offset, 0),
-        support_tip_diameter=support_tip_diameter).clean()
+        support_tip_diameter=support_tip_diameter)
 
     supports = support1.add(support2).add(support3).clean()
+    #supports = support1.add(support2).clean()
+    #supports = support1.add(support3).clean()
+    #supports = support3.clean()
+    #supports = support3
     return supports
 
 def export_model(ctx: Context, model: cq.Workplane, file_name: str, file_format) -> None:
