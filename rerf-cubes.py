@@ -34,7 +34,7 @@ def round_to_resolution(value: float, resolution: float) -> float:
     """
     i: int = round(value / resolution)
     result: float = round(i * resolution, 3)
-    print(f"round_to_resolution: value: {value}, resolution: {resolution}, i: {i}, result: {result}")
+    #print(f"round_to_resolution: value: {value}, resolution: {resolution}, i: {i}, result: {result}")
     return result
 
 
@@ -263,80 +263,84 @@ def support_pillar_upper_cube(
     ]
 
     spline_path = cq.Workplane("XY").spline(pts, tangents)
-    print(f"pts: {pts}")
-    print(f"tangents: {tangents}")
-    print(f"spline_path: {spline_path}")
+    #print(f"pts: {pts}")
+    #print(f"tangents: {tangents}")
+    #print(f"spline_path: {spline_path}")
 
-    def round_tuple(tup: tuple, ndigits: int = 3) -> tuple:
-        """
-        Rounds each element of a tuple to the specified number of decimal places.
+    #def round_tuple(tup: tuple, ndigits: int = 3) -> tuple:
+    #    """
+    #    Rounds each element of a tuple to the specified number of decimal places.
 
-        Parameters:
-            tup (tuple): The tuple to round.
-            ndigits (int): The number of decimal places to round to.
+    #    Parameters:
+    #        tup (tuple): The tuple to round.
+    #        ndigits (int): The number of decimal places to round to.
 
-        Returns:
-            tuple: A new tuple with rounded values.
-        """
-        return tuple(round(v, ndigits) for v in tup)
+    #    Returns:
+    #        tuple: A new tuple with rounded values.
+    #    """
+    #    return tuple(round(v, ndigits) for v in tup)
 
-    def round_location(loc: Location, ndigits: int = 3) -> Location:
-        """
-        Rounds the translation and rotation of a Location object to the specified number of decimal places.
+    #def round_location(loc: Location, ndigits: int = 3) -> Location:
+    #    """
+    #    Rounds the translation and rotation of a Location object to the specified number of decimal places.
 
-        Parameters:
-            loc (Location): The Location object to round.
-            ndigits (int): The number of decimal places to round to.
+    #    Parameters:
+    #        loc (Location): The Location object to round.
+    #        ndigits (int): The number of decimal places to round to.
 
-        Returns:
-            Location: A new Location object with rounded translation and rotation.
-        """
-        trans, rot_deg = loc.toTuple()
-        print(f"round_location: trans: {trans}, rot_deg: {rot_deg}")
+    #    Returns:
+    #        Location: A new Location object with rounded translation and rotation.
+    #    """
+    #    trans, rot_deg = loc.toTuple()
+    #    print(f"round_location: trans: {trans}, rot_deg: {rot_deg}")
 
-        rounded_trans = round_tuple(trans, ndigits)
-        print(f"round_location: round_trans: {rounded_trans}")
-        rounded_rot_deg = round_tuple(rot_deg, ndigits)
-        print(f"round_location: round_rot_deg: {rounded_rot_deg}")
-        rounded_rot_rad = tuple(round(radians(a), ndigits) for a in rounded_rot_deg)
-        print(f"round_location: round_rot_rad: {rounded_rot_rad}")
+    #    rounded_trans = round_tuple(trans, ndigits)
+    #    print(f"round_location: round_trans: {rounded_trans}")
+    #    rounded_rot_deg = round_tuple(rot_deg, ndigits)
+    #    print(f"round_location: round_rot_deg: {rounded_rot_deg}")
+    #    rounded_rot_rad = tuple(round(radians(a), ndigits) for a in rounded_rot_deg)
+    #    print(f"round_location: round_rot_rad: {rounded_rot_rad}")
 
-        print(f"round_location: rounded_trans: {rounded_trans}, rounded_rot_rad: {rounded_rot_rad}")
-        return Location(rounded_trans, rounded_rot_rad)
+    #    print(f"round_location: rounded_trans: {rounded_trans}, rounded_rot_rad: {rounded_rot_rad}")
+    #    return Location(rounded_trans, rounded_rot_rad)
 
  
-    bl = spline_path.val().locationAt(0)
-    print(f"spline_path bl: {bl.toTuple()}")
-    rl_bl = round_location(bl, 3)
-    print(f"spline_path round_location(rl_bl.toTuple()), 3): {rl_bl.toTuple()}")
-    bottom_loc = [rl_bl]
-    print(f"spline_path bottom_loc: {bottom_loc[0].toTuple()}")
+    #bl = spline_path.val().locationAt(0)
+    #print(f"spline_path bl: {bl.toTuple()}")
+    #rl_bl = round_location(bl, 3)
+    #print(f"spline_path round_location(rl_bl.toTuple()), 3): {rl_bl.toTuple()}")
+    #bottom_loc = [rl_bl]
+    #print(f"spline_path bottom_loc: {bottom_loc[0].toTuple()}")
+    bottom_loc = [spline_path.val().locationAt(0)]
+    #print(f"bottom_loc: {bottom_loc[0].toTuple()}")
 
-    ml = spline_path.val().locationAt(0.5)
-    print(f"spline_path ml: {ml.toTuple()}")
-    rl_ml = round_location(ml, 3)
-    print(f"spline_path round_location(rl_ml.toTuple()), 3): {rl_ml.toTuple()}")
-    middle_loc = [rl_ml]
-    print(f"spline_path middle_loc: {middle_loc[0].toTuple()}")
-    middle_loc = [Location(middle_loc[0].toTuple()[0], (0.0, 0.0, 0.0))]
-    print(f"spline_path fake middle_loc: {middle_loc[0].toTuple()}")
+    ##ml = spline_path.val().locationAt(0.5)
+    #print(f"spline_path ml: {ml.toTuple()}")
+    #rl_ml = round_location(ml, 3)
+    #print(f"spline_path round_location(rl_ml.toTuple()), 3): {rl_ml.toTuple()}")
+    #middle_loc = [rl_ml]
+    #print(f"spline_path middle_loc: {middle_loc[0].toTuple()}")
+    middle_loc = [spline_path.val().locationAt(0.5)]
+    #print(f"middle_loc: {middle_loc[0].toTuple()}")
 
-    tl = spline_path.val().locationAt(1)
-    print(f"spline_path tl: {tl.toTuple()}")
-    rl_tl = round_location(tl, 3)
-    print(f"spline_path round_location(rl_tl.toTuple()), 3): {rl_tl.toTuple()}")
-    top_loc = [rl_tl]
-    print(f"spline_path top_loc: {top_loc[0].toTuple()}")
+    ##tl = spline_path.val().locationAt(1)
+    #print(f"spline_path tl: {tl.toTuple()}")
+    #rl_tl = round_location(tl, 3)
+    #print(f"spline_path round_location(rl_tl.toTuple()), 3): {rl_tl.toTuple()}")
+    #top_loc = [rl_tl]
+    #print(f"spline_path top_loc: {top_loc[0].toTuple()}")
+    top_loc = [spline_path.val().locationAt(1)]
+    #print(f"top_loc: {top_loc[0].toTuple()}")
 
     base_radius = round_to_resolution(support_base_diameter / 2.0, ctx.bed_resolution)
     middle_radius = base_radius
     top_radius = round_to_resolution(support_tip_diameter / 2.0, ctx.bed_resolution)
-    print(f"base_radius: {base_radius:5.3f}")
-    print(f"middle_radius: {middle_radius:5.3f}")
-    print(f"top_radius: {top_radius:5.3f}")
+    #print(f"base_radius: {base_radius:5.3f}")
+    #print(f"middle_radius: {middle_radius:5.3f}")
+    #print(f"top_radius: {top_radius:5.3f}")
 
     wp = cq.Workplane("XY").pushPoints(bottom_loc).circle(base_radius)
-    #wp = wp.pushPoints(middle_loc).circle(middle_radius)
+    wp = wp.pushPoints(middle_loc).circle(middle_radius)
     wp = wp.pushPoints(top_loc).circle(top_radius)
 
     support = wp.sweep(spline_path, multisection=True)
@@ -384,11 +388,11 @@ def generate_upper_cube_supports(
     #tip_offset = round_to_resolution((cube_size / 2.0) - ((support_tip_diameter * 1.1) / 2.0), ctx.bed_resolution)
     #base_offset = round_to_resolution((base_size / 2.0) - ((support_base_diameter) / 2.0), ctx.bed_resolution)
     #tip_offset = round_to_resolution((cube_size / 2.0) - ((support_tip_diameter) / 2.0), ctx.bed_resolution)
-    print(f"base_offset: {base_offset}, tip_offset: {tip_offset}")
+    #print(f"base_offset: {base_offset}, tip_offset: {tip_offset}")
 
     support_base_loc_offset = base_offset
     support_tip_loc_offset = tip_offset
-    print(f"support_base_loc_offset: {support_base_loc_offset}, support_tip_loc_offset: {support_tip_loc_offset}")
+    #print(f"support_base_loc_offset: {support_base_loc_offset}, support_tip_loc_offset: {support_tip_loc_offset}")
 
     neg_support_base_loc_offset = round_to_resolution(-support_base_loc_offset, ctx.bed_resolution)
     neg_support_tip_loc_offset = round_to_resolution(-support_tip_loc_offset, ctx.bed_resolution)
@@ -491,7 +495,7 @@ def generate_shape_with_support(ctx: Context, row_count: int, col_count: int, re
 
             # Cube number is 2 digits first digit is the row second is the column
             row_col = (row * 10) + col
-            print(f"rerf_number: {rerf_number} row_col: {row_col:02d} x: {x:5.3f}, y: {y:5.3f}")
+            #print(f"rerf_number: {rerf_number} row_col: {row_col:02d} x: {x:5.3f}, y: {y:5.3f}")
 
             # Generate the shape
             shape = generate_shape(ctx, row_col, ctx.cube_size, ctx.tube_length, ctx.tube_hole_diameter, ctx.tube_wall_thickness, rerf_number)
@@ -509,7 +513,7 @@ def generate_shape_with_support(ctx: Context, row_count: int, col_count: int, re
             ## Create the upper cube support structure
             upper_cube_support_len = ctx.zlift_height - ctx.base_height + ctx.cube_size + ctx.tube_length + (ctx.overlap * 2)
             upper_cube_supports = generate_upper_cube_supports(ctx, ctx.cube_size, ctx.base_size, upper_cube_support_len, support_diameter, support_tip_diameter)
-            show(upper_cube_supports, title="upper_cube_supports")
+            #show(upper_cube_supports, title="upper_cube_supports")
 
             # Move the base, base_supports, uppoer_supports and shape to the correct position
             base = base.translate((0, 0, 0))
@@ -563,7 +567,7 @@ default_tube_length= round_to_resolution(3 * 2.4, default_layer_height) # Make m
 default_tube_hole_diameter = round_to_resolution(0.714, default_bed_resolution) # Make multiple of bed_resolution
 default_tube_wall_thickness = round_to_resolution(0.2, default_bed_resolution) # Make multiple of bed_resolution
 default_overlap = round_to_resolution(default_layer_height * 2.0, default_layer_height) # Make multiple of layer_height
-default_base_size = round_to_resolution(default_cube_size * 2, default_bed_resolution) # Size of the square base in mm
+default_base_size = round_to_resolution(default_cube_size * 2.5, default_bed_resolution) # Size of the square base in mm
 default_base_height = round_to_resolution(default_layer_height * 10, default_layer_height) # height of the base in mm
 default_zlift_height = 5
 default_position_box_width = round_to_resolution(5000 * default_bed_resolution, default_bed_resolution)
@@ -605,8 +609,8 @@ if __name__ == "__main__":
     parser.add_argument("--bed_resolution", type=float, default=default_bed_resolution, help=f"resolution of the printer bed, defaults to {default_bed_resolution}")
     parser.add_argument("--bed_size", type=float, default=default_bed_size, help=f"size of the bed, defaults to ({default_bed_size[0]:5.3f}, {default_bed_size[1]:5.3f})")
     parser.add_argument("-lh", "--layer_height", type=float, default=default_layer_height, help=f"Layer height for this print, defaults to {default_layer_height:5.3f}")
-    parser.add_argument("-bs", "--base_size", type=int, default=default_base_size, help=f"Size of the square base in mm, defaults to {default_base_size:5.3}")
-    parser.add_argument("-bh", "--base_height", type=int, default=default_base_height, help=f"Base height in mm, defaults to {default_base_height:5.3f}")
+    parser.add_argument("-bs", "--base_size", type=float, default=default_base_size, help=f"Size of the square base in mm, defaults to {default_base_size:5.3}")
+    parser.add_argument("-bh", "--base_height", type=float, default=default_base_height, help=f"Base height in mm, defaults to {default_base_height:5.3f}")
     parser.add_argument("-zl", "--zlift_height", type=float, default=default_zlift_height, help="Height from bed to bottom of the solenoid base, defaults to {default_zlift_height}")
     parser.add_argument("-ol", "--overlap", type=float, default=default_overlap, help=f"Overlap between two objects, defaults to {default_overlap:5.3f}")
     parser.add_argument("-pbsp", "--position_box_size", type=float, nargs=2, default=[default_position_box_width, default_position_box_height], metavar=('width', 'height'), help=f"Size of box to disperse the solenoids into, defaults to ({default_position_box_width}, {default_position_box_height})")
