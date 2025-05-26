@@ -1,4 +1,6 @@
 /__pycache__
+/shapes
+/.DS_Store
 *.pm4n
 *.stl
 *.step
