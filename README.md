@@ -1,25 +1,29 @@
-# R_E_R_F generator for prototype braille dot solenoid using CadQuery
+# R_E_R_F generator for prototype braille dot bobbins using CadQuery
 
-This app generates a set of prototype braille dot solenoids that
-are arranged in a grid pattern. The objects are designed to be printed
-on a resin 3D printer which supports "Resin Exposure Range Finder"
-files. On some AnyCubic resin 3D printers this is done by having the
-basename of the file, the portion of the file name precceding the
+This app generates a set of prototype braille dot bobbin with the intention
+of creating a solenoid by wrapping wire around the bobbin and then having
+a iron/steel shaft with a braille dot on the end. This would then be
+assembled into an 2 x 8 braille dot or possibly an large braille
+"tablet" that could display graphical information as well as braille characters.
+
+The bobbins are designed to be printed on a resin 3D printer which supports
+"Resin Exposure Range Finder" files.  On some AnyCubic resin 3D printers this
+is done by having the basename of the file, the portion of the file name precceding the
 file extension, being R_E_R_F. For the Photon Mono 4 the extension is
 `.pm4n`.
 
 The app operates in two modes controlled by `--rerf` and `--no-rerf` with
 the default being `--no-rerf`. In the `--rerf` mode the printer bed is
-divided into 8 grid areas, each of which contains a set of solenoids
+divided into 8 grid areas, each of which contains a set of bobbins
 that are arranged in a row and column pattern. And the exposure time in
 each area increases by 250ms, at least in the AnyCubic Photon Mono 4 printer.
 
 A rerf_number is printed on the positive Y face, ">Y", of the upper cube
-and each solenoid in that area has the same rerf_number. Thus this
-identifies the exposure time for that solenoid. Also, each solenoid is
+and each bobbin in that area has the same rerf_number. Thus this
+identifies the exposure time for that bobbin. Also, each bobbin is
 also engraved with the `row_count` and `col_count` parameters on the
 negative Y face, "\<Y", of the upper cube. This allows you to identify
-which position within the grid area the solenoid is located further
+which position within the grid area the bobbin is located further
 allowing the user to identify possible exposure descrpencies within
 an area and the print bed as a whole.
 
@@ -61,10 +65,10 @@ Verify micromamba is installed:
 micromamba --version
 ```
 
-Clone this repository and then `cd rerf-cubes-cq/` create the environment:
+Clone this repository and then `cd rerf-bd-bobbin-cq/` create the environment:
 
 ```
-wink@3900x 25-05-23T17:13:48.108Z:~/data/prgs/3dprinting/rerf-cubes-cq (wip-add-generate_upper_cube_supports)
+wink@3900x 25-05-23T17:13:48.108Z:~/data/prgs/3dprinting/rerf-bd-bobbin-cq
 $ micromamba create -f environment.yml 
 warning  libmamba 'repo.anaconda.com', a commercial channel hosted by Anaconda.com, is used.
     
@@ -81,7 +85,7 @@ conda-forge/linux-64                                44.1MB @  52.0MB/s  0.8s
 
 Transaction
 
-  Prefix: /home/wink/.local/share/mamba/envs/rerf-cubes-cq
+  Prefix: /home/wink/.local/share/mamba/envs/rerf-bd-bobbins-cq
 
   Updating specs:
 
@@ -139,21 +143,21 @@ Transaction finished
 
 To activate this environment, use:
 
-    micromamba activate rerf-cubes-cq
+    micromamba activate rerf-bd-bobbins-cq
 
 Or to execute a single command in this environment, use:
 
-    micromamba run -n rerf-cubes-cq mycommand
+    micromamba run -n rerf-bd-bobbins-cq mycommand
 
-wink@3900x 25-05-23T17:15:14.843Z:~/data/prgs/3dprinting/rerf-cubes-cq (wip-add-generate_upper_cube_supports)
+wink@3900x 25-05-23T17:15:14.843Z:~/data/prgs/3dprinting/rerf-bd-bobbins-cq (wip-add-generate_upper_cube_supports)
 ```
 
-Activate rerf-cubes-cq environment:
+Activate rerf-bd-bobbins-cq environment:
 
 ```
-wink@3900x 25-05-23T17:15:14.843Z:~/data/prgs/3dprinting/rerf-cubes-cq (wip-add-generate_upper_cube_supports)
-$ micromamba activate rerf-cubes-cq
-(rerf-cubes-cq) wink@3900x 25-05-23T17:15:27.711Z:~/data/prgs/3dprinting/rerf-cubes-cq (wip-add-generate_upper_cube_supports)
+wink@3900x 25-05-23T17:15:14.843Z:~/data/prgs/3dprinting/rerf-bd-bobbins-cq (wip-add-generate_upper_cube_supports)
+$ micromamba activate rerf-bd-bobbins-cq
+(rerf-bd-bobbins-cq) wink@3900x 25-05-23T17:15:27.711Z:~/data/prgs/3dprinting/rerf-bd-bobbins-cq (wip-add-generate_upper_cube_supports)
 ```
 
 Verify rerf-cubes.py runs
@@ -174,7 +178,7 @@ rerf-cubes.py v1.0.0
 Activate the environment using:
 
 ```sh
-micromamba activate rerf-cubes-cq
+micromamba activate rerf-bd-bobbins-cq
 ```
 
 ### Help

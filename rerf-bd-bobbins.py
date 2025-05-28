@@ -541,7 +541,7 @@ if __name__ == "__main__":
     parser.add_argument("-bs", "--base_size", type=float, default=default_base_size, help=f"Size of the square base in mm, defaults to {default_base_size:5.3}")
     parser.add_argument("-bh", "--base_height", type=float, default=default_base_height, help=f"Base height in mm, defaults to {default_base_height:5.3f}")
     parser.add_argument("-ea", "--edge_adjustment", type=float, default=default_edge_adjustment, help=f"size of the bed, defaults to ({default_edge_adjustment:5.3f}")
-    parser.add_argument("-zl", "--zlift_height", type=float, default=default_zlift_height, help="Height from bed to bottom of the solenoid base, defaults to {default_zlift_height}")
+    parser.add_argument("-zl", "--zlift_height", type=float, default=default_zlift_height, help=f"Height from bed to bottom of the solenoid base, defaults to {default_zlift_height:5.3f}")
     parser.add_argument("-ol", "--overlap", type=float, default=default_overlap, help=f"Overlap between two objects, defaults to {default_overlap:5.3f}")
     parser.add_argument("-pbsp", "--position_box_size", type=float, nargs=2, default=[default_position_box_width, default_position_box_height], metavar=('width', 'height'), help=f"Size of box to disperse the solenoids into, defaults to ({default_position_box_width}, {default_position_box_height})")
     parser.add_argument("-pbl", "--position_box_location", type=float, nargs=2, default=[default_position_box_location_x, default_position_box_location_y], metavar=('x', 'y'), help=f"Location of position_box, defaults to ({default_position_box_location_x}, {default_position_box_location_y})")
