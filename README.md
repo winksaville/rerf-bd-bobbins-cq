@@ -1,16 +1,19 @@
 # R_E_R_F generator for prototype braille dot bobbins using CadQuery
 
-This app generates a set of prototype braille dot bobbin with the intention
+This app generates a set of prototype braille dot bobbins with the intention
 of creating a solenoid by wrapping wire around the bobbin and then having
-a iron/steel shaft with a braille dot on the end. This would then be
-assembled into an 2 x 8 braille dot or possibly an large braille
-"tablet" that could display graphical information as well as braille characters.
+a iron/steel shaft with a braille dot on the end that will be controlled
+by the solenoid. These dots would then be assembled into a 2 x 8 braille
+dot or possibly an large braille "tablet" that could display graphical
+information as well as braille text.
 
 The bobbins are designed to be printed on a resin 3D printer which supports
-"Resin Exposure Range Finder" files.  On some AnyCubic resin 3D printers this
-is done by having the basename of the file, the portion of the file name precceding the
-file extension, being R_E_R_F. For the Photon Mono 4 the extension is
-`.pm4n`.
+"Resin Exposure Range Finder" as implemented by some AnyCubic resin 3D
+printers. On the Anycubic printers I'm familiar with this is done by having
+the basename of the file being "R_E_R_F" followed by the extension which
+is device specific. For the "Photon Mono 4' the extension is `.pm4n` and
+for the "Photon Mono 4 ultra" `.pm4u` as created by the
+AnycubicPhotonWorkshop slicer software.
 
 The app operates in two modes controlled by `--rerf` and `--no-rerf` with
 the default being `--no-rerf`. In the `--rerf` mode the printer bed is
