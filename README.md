@@ -163,10 +163,10 @@ $ micromamba activate rerf-bd-bobbins-cq
 (rerf-bd-bobbins-cq) wink@3900x 25-05-23T17:15:27.711Z:~/data/prgs/3dprinting/rerf-bd-bobbins-cq (wip-add-generate_upper_cube_supports)
 ```
 
-Verify rerf-cubes.py runs
+Verify rerf-bd-bobbins.py runs
 ```
-$ ./rerf-cubes.py -v
-rerf-cubes.py v1.0.0
+$ ./rerf-bd-bobbins.py -v
+rerf-bd-bobbins.py v1.1.0
 ```
 
 ### Other Options
@@ -188,12 +188,12 @@ micromamba activate rerf-bd-bobbins-cq
 
 To see the help message for the script, run:
 ```
-$ ./rerf-cubes.py -h
-usage: rerf-cubes.py [-h] [-v] [-cs CUBE_SIZE] [-tl TUBE_LENGTH] [-thd TUBE_HOLE_DIAMETER] [-twt TUBE_WALL_THICKNESS] [-br BED_RESOLUTION] [-bs BED_SIZE] [-lh LAYER_HEIGHT] [-sl SUPPORT_LEN]
-                     [-bl BASE_LAYERS] [-pbsp width height] [-pbl x y] [-re | --rerf | --no-rerf] [-s | --show | --no-show]
-                     filename {stl,step} row_count col_count
+$ ./rerf-bd-bobbins.py -h
+usage: rerf-bd-bobbins.py [-h] [-v] [-cs CUBE_SIZE] [-tl TUBE_LENGTH] [-thd TUBE_HOLE_DIAMETER] [-twt TUBE_WALL_THICKNESS] [--bed_resolution BED_RESOLUTION] [--bed_size BED_SIZE] [-lh LAYER_HEIGHT] [-bs BASE_SIZE]
+                          [-bh BASE_HEIGHT] [-ea EDGE_ADJUSTMENT] [-zl ZLIFT_HEIGHT] [-ol OVERLAP] [-pbsp width height] [-pbl x y] [-re | --rerf | --no-rerf] [-s | --show | --no-show]
+                          filename {stl,step} row_count col_count
 
-rerf-cubes v1.0.0 Generate 3D cubes with text inscriptions.
+rerf-bd-bobbins-cq v1.1.0 Generate Braille Dispaly Bobbins with text inscriptions.
 
 positional arguments:
   filename              Name of the output file (without extension)
@@ -212,18 +212,23 @@ options:
                         Tube hole diameter engraved on the -X face, defaults to 0.714
   -twt TUBE_WALL_THICKNESS, --tube_wall_thickness TUBE_WALL_THICKNESS
                         Tube wall thickness, defaults to 0.204
-  -br BED_RESOLUTION, --bed_resolution BED_RESOLUTION
+  --bed_resolution BED_RESOLUTION
                         resolution of the printer bed, defaults to 0.017
-  -bs BED_SIZE, --bed_size BED_SIZE
-                        size of the bed, defaults to (153.408, 87.040)
+  --bed_size BED_SIZE   size of the bed, defaults to (153.408, 87.040)
   -lh LAYER_HEIGHT, --layer_height LAYER_HEIGHT
                         Layer height for this print, defaults to 0.050
-  -sl SUPPORT_LEN, --support_len SUPPORT_LEN
-                        Length of the support structure, defaults to 5.000
-  -bl BASE_LAYERS, --base_layers BASE_LAYERS
-                        Number of layers for the base, defaults to 10
+  -bs BASE_SIZE, --base_size BASE_SIZE
+                        Size of the square base in mm, defaults to 5.98
+  -bh BASE_HEIGHT, --base_height BASE_HEIGHT
+                        Base height in mm, defaults to 0.500
+  -ea EDGE_ADJUSTMENT, --edge_adjustment EDGE_ADJUSTMENT
+                        size of the bed, defaults to (1.300
+  -zl ZLIFT_HEIGHT, --zlift_height ZLIFT_HEIGHT
+                        Height from bed to bottom of the solenoid base, defaults to 5.000
+  -ol OVERLAP, --overlap OVERLAP
+                        Overlap between two objects, defaults to 0.100
   -pbsp width height, --position_box_size width height
-                        Size of box to disperse the cubes into, defaults to (85.0, 42.5)
+                        Size of box to disperse the solenoids into, defaults to (85.0, 42.5)
   -pbl x y, --position_box_location x y
                         Location of position_box, defaults to (0, 0)
   -re, --rerf, --no-rerf
@@ -231,7 +236,7 @@ options:
   -s, --show, --no-show
                         Show the created object in the viewer
 
-Version: 1.0.0
+Version: 1.1.0
 ```
 
 
@@ -240,22 +245,64 @@ Version: 1.0.0
 Ensure the environment is activated, see [Activating the Environment](#activating-the-environment). Then run the script directly with:
 
 ```sh
-./rerf-cubes.py <filename> <format> <row_count> <col_count> [options]
+./rerf-bd-bobbins.py <filename> <format> <row_count> <col_count> [options]
 ```
 
 Example:
 
+Create one bobbin using the defaults and show it in the viewer:
 ```sh
-./rerf-cubes.py cube2 stl 1 1
+$ ./rerf-bd-bobbins.py bd stl 1 1 -s
+Generating one set of objects with no rerf_number
+position_box_width: 85.000, position_box_height: 42.500, cube_size_half: 1.190
+x_initial: 1.190, y_initial: 1.190, x_step: 82.603, y_step: 40.103
+Exporting model to bd_cz-2.397_tl-7.200_thd-0.714_twt-0.204_rc-1_cc-1_lh-0.050_box-85.000x42.500.stl
+Showing model..
 ```
 
-### Cleaning Up
+![docs/bd_cz-2.397_tl-7.200_thd-0.714_twt-0.204_rc-1_cc-1_lh-0.050_box-85.000x42.500.png)](docs/bd_cz-2.397_tl-7.200_thd-0.714_twt-0.204_rc-1_cc-1_lh-0.050_box-85.000x42.500.png)
 
-Remove generated files (`.stl`, `.step`, `pm4n`) with:
+Here we make R_E_R_F file with 8 sets of 2 rows and 3 columns of bobbins, each with a different exposure time:
 
 ```sh
-make clean
+$ ./rerf-bd-bobbins.py bd stl 2 3 -s  --rerf
+Generating 8 sets of R_E_R_F bd bobbins with rerf_numbers 1 .. 8
+sequential_order: 0 rerf_number: 8
+position_box_width: 34.510, position_box_height: 39.168, cube_size_half: 1.190
+x_initial: 1.190, y_initial: 1.190, x_step: 10.710, y_step: 18.394
+position_box_location_x: 38.352, position_box_location_y: 10.880
+sequential_order: 1 rerf_number: 7
+position_box_width: 34.510, position_box_height: 39.168, cube_size_half: 1.190
+x_initial: 1.190, y_initial: 1.190, x_step: 10.710, y_step: 18.394
+position_box_location_x: 38.352, position_box_location_y: 54.400
+sequential_order: 2 rerf_number: 6
+position_box_width: 34.510, position_box_height: 39.168, cube_size_half: 1.190
+x_initial: 1.190, y_initial: 1.190, x_step: 10.710, y_step: 18.394
+position_box_location_x: 76.704, position_box_location_y: 10.880
+sequential_order: 3 rerf_number: 5
+position_box_width: 34.510, position_box_height: 39.168, cube_size_half: 1.190
+x_initial: 1.190, y_initial: 1.190, x_step: 10.710, y_step: 18.394
+position_box_location_x: 76.704, position_box_location_y: 54.400
+sequential_order: 4 rerf_number: 4
+position_box_width: 34.510, position_box_height: 39.168, cube_size_half: 1.190
+x_initial: 1.190, y_initial: 1.190, x_step: 10.710, y_step: 18.394
+position_box_location_x: 115.056, position_box_location_y: 10.880
+sequential_order: 5 rerf_number: 3
+position_box_width: 34.510, position_box_height: 39.168, cube_size_half: 1.190
+x_initial: 1.190, y_initial: 1.190, x_step: 10.710, y_step: 18.394
+position_box_location_x: 115.056, position_box_location_y: 54.400
+sequential_order: 6 rerf_number: 2
+position_box_width: 34.510, position_box_height: 39.168, cube_size_half: 1.190
+x_initial: 1.190, y_initial: 1.190, x_step: 10.710, y_step: 18.394
+position_box_location_x: 153.408, position_box_location_y: 10.880
+sequential_order: 7 rerf_number: 1
+position_box_width: 34.510, position_box_height: 39.168, cube_size_half: 1.190
+x_initial: 1.190, y_initial: 1.190, x_step: 10.710, y_step: 18.394
+position_box_location_x: 153.408, position_box_location_y: 54.400
+Exporting model to bd_rerf_rc-2_cc-3_lh-0.050.stl
+Showing model..
 ```
+![docs/bd_rerf_rc-2_cc-3_lh-0.050.png](docs/bd_rerf_rc-2_cc-3_lh-0.050.png)
 
 ## Exported Files
 

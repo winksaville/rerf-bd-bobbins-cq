@@ -15,7 +15,7 @@ from context import Context
 from cadquery.vis import show
 from cadquery import Location, Vector
 
-VERSION = "1.0.0"
+VERSION = "1.1.0"
 
 logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -96,7 +96,7 @@ def generate_shape(ctx: Context, row_col: int, cube_size: float, tube_length: fl
     # Create the base cube centered at (0,0,0) with base on the XY plane
     base_cube = cq.Workplane("XY").box(cube_size, cube_size, cube_size, centered=(True, True, False))
 
-    # Create the tube between the two cubes with half of the overlap in the base and upper cubes
+    # Create the tube between the upper and bottom cubes with half of the overlap in the base and upper cubes
     tube_full_length = round_to_resolution(tube_length + ctx.overlap, ctx.layer_height)
     tube_radius = round_to_resolution((tube_hole_diameter + (tube_wall_thickness * 2)) / 2, ctx.bed_resolution)
 
@@ -396,7 +396,7 @@ def generate_shape_with_support(ctx: Context, row_count: int, col_count: int, re
         row_count (int): The number of rows to create.
         rerf_number (None): The rerf number to engrave on the >Y face, not printed if <= 0.
     Returns:
-        cq.Workplane: The final 3D object representing the cubes and support structures.
+        cq.Workplane: The final 3D object representing the bd bobbins and support structures.
     """
     support_len_base_cube = ctx.zlift_height
     support_diameter = round_to_resolution(0.75, ctx.bed_resolution)
@@ -523,7 +523,7 @@ if __name__ == "__main__":
             raise argparse.ArgumentTypeError(f"{ivalue} is not a valid row/column count (must be >= 1 <= 10")
 
     parser = argparse.ArgumentParser(
-        description=f"rerf-cubes v{VERSION} Generate 3D cubes with text inscriptions.",
+        description=f"rerf-bd-bobbins-cq v{VERSION} Generate Braille Dispaly Bobbins with text inscriptions.",
         epilog=f"Version: {VERSION}"
     )
     parser.add_argument("-v", "--version", action="version", version=f"%(prog)s v{VERSION}")
@@ -588,7 +588,7 @@ if __name__ == "__main__":
     logging.debug(f"ctx: {ctx}")
 
     if ctx.rerf:
-        print("Generating 8 sets of R_E_R_F cubes with rerf_numbers 1 .. 8")
+        print("Generating 8 sets of R_E_R_F bd bobbins with rerf_numbers 1 .. 8")
 
         # Generate ctx.row_count * ctx.col_count number of 3D objects in each position box
         # of in a R_E_R_F set. A R_E_R_F is a 2x4 grid. The idea is that each position box
@@ -632,7 +632,7 @@ if __name__ == "__main__":
             x = round_to_resolution(rerf_x_initial + (rerf_number_col * rerf_x_step), ctx.bed_resolution)
             for rerf_number_row in range(rerf_number_rows):
 
-                # Calcuate the position for this set of cubes
+                # Calcuate the position for this set of bobbins
                 y = round_to_resolution(rerf_y_initial + (rerf_number_row * rerf_y_step), ctx.bed_resolution)
                 ctx.position_box_location[0] = x
                 ctx.position_box_location[1] = y
@@ -646,7 +646,7 @@ if __name__ == "__main__":
                 rerf_number = sequential_to_printer_order[current_printer][sequential_order]
                 print(f"sequential_order: {sequential_order} rerf_number: {rerf_number}")
 
-                # Generate the cubes
+                # Generate the bobbins
                 bo = generate_shape_with_support(ctx, ctx.row_count, ctx.col_count, rerf_number)
 
                 # Group them into a single object
@@ -676,7 +676,7 @@ elif __name__ == "__cq_main__":
     # Initialize the context with default values
     default_bed_resolution = 0.017
     ctx = Context(
-        file_name="rerf-cubes",
+        file_name="rerf-bd-bobbins",
         file_format="stl",
         row_count=3,
         col_count=3,
